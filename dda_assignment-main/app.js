@@ -9,34 +9,32 @@ app.set('view engine', 'ejs');
 app.use(express.json());
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({extended: false}));
-var sql = require('mssql/msnodesqlv8');
+var mysql = require('mysql');
 
 var loggedInUser = ''
 
-var config = {
-    user: 'admin123',
-    password: 'admin123',
-    server: 'SUSHANT-DESKTOP\\SQLEXPRESS',
-    // server: 'WPU5CD929158PLW\\MSSQLSERVER01',
-    driver: 'msnodesqlv8',
-    database: 'Courier_Management'
-};
+var connection = mysql.createConnection ({
+    host: "localhost",
+    user: "admin123",
+    password: "admin123",
+    database: "courier_management"
+});
 
 app.get('/home', function (req, res) {
     res.render('login.ejs')
 });
 
 app.get('/home1/:id', function (req, res) {
-    sql.connect(config, async function (err) {
-
+    connection.connect(err => {
         if (err) {
-            console.log(err);
-            displayError(res, err)
+          console.error('Error connecting to MySQL:', err);
+          return;
         }
+        console.log('Connected to MySQL');
 
         var request = new sql.Request();
         var cmd = "Select * from [User] where UserId=" + "\'" + req.params.id + "\';";
-        request.query(cmd, function (err, recordset) {
+        connection.query(cmd, function (err, recordset) {
 
             if (err) console.log(err)
             var result = recordset.recordset.length == 1;
@@ -56,15 +54,15 @@ app.get('/home1/:id', function (req, res) {
 app.post('/home1', function (req, res) {
     var username = req.body.username;
     var password = req.body.password;
-    sql.connect(config, async function (err) {
-
+    connection.connect(err => {
         if (err) {
-            console.log(err);
-            displayError(res, err)
+          console.error('Error connecting to MySQL:', err);
+          return;
         }
+        console.log('Connected to MySQL');
 
-        var request = new sql.Request();
-        request.query("Select * from [User] where UserId=" + "\'" + username + "\' and Password=\'"+ password +"\';", function (err, recordset) {
+        //var request = new sql.Request();
+        config.query("Select * from [User] where UserId=" + "\'" + username + "\' and Password=\'"+ password +"\';", function (err, recordset) {
 
             if (err) console.log(err)
             var result = recordset.recordset.length == 1;
@@ -87,7 +85,7 @@ app.get('/register', function (req, res) {
 });
 
 app.post('/createUser', function (req, res) {
-    sql.connect(config, async function (err) {
+    config.connect(config, async function (err) {
 
         if (err) {
             console.log(err);
@@ -149,7 +147,7 @@ app.get('/create', function (req, res) {
 
 app.post('/createOrder', function (req, res) {
     var details = ''
-    sql.connect(config, async function (err) {
+    config.connect(config, async function (err) {
         if (err) {
             console.log(err);
             displayError(res, err);
@@ -186,12 +184,12 @@ app.post('/createOrder', function (req, res) {
 })
 
 app.post('/orderComplete', function (req, res) {
-    sql.connect(config, async function (err) {
-
+    connection.connect(err => {
         if (err) {
-            console.log(err);
-            displayError(res, err)
+          console.error('Error connecting to MySQL:', err);
+          return;
         }
+        console.log('Connected to MySQL');
 
         var isActive = 1
         var details = JSON.parse(req.body.details)
@@ -218,12 +216,12 @@ app.post('/orderComplete', function (req, res) {
 
 app.post('/view', function (req, res) {
     console.log('View orders called')
-    sql.connect(config, async function (err) {
-
+    connection.connect(err => {
         if (err) {
-            console.log(err);
-            displayError(res, err)
+          console.error('Error connecting to MySQL:', err);
+          return;
         }
+        console.log('Connected to MySQL');
 
         var request = new sql.Request();
         var cmd = "Select O.OrderId,O.OrderDate,O.SenderId,O.RecipientId,ID.ItemName,ID.ItemCategory,O.[WeightofItem (in Kg)],O.[LengthofItem (ft)],O.[BreadthofItem (ft)],O.[HeightofItem (ft)],O.isActive,SD.IsFragile from [Order] as O inner join [ShipmentDetails] as SD on O.OrderId = SD.OrderId inner join [ItemDetails] as ID on O.OrderId=ID.OrderId and SenderId=" + "\'" + req.body.userId + "\'"
@@ -243,12 +241,12 @@ app.post('/view', function (req, res) {
 });
 
 app.get('/order/modify/:orderId/:userId', function (req,res){
-    sql.connect(config, async function (err) {
-
+    connection.connect(err => {
         if (err) {
-            console.log(err);
-            displayError(res, err)
+          console.error('Error connecting to MySQL:', err);
+          return;
         }
+        console.log('Connected to MySQL');
 
         var request = new sql.Request();
         var cmd = "Select O.OrderId,O.OrderDate,O.SenderId,O.RecipientId,ID.ItemName,ID.ItemCategory,O.[WeightofItem (in Kg)],O.[LengthofItem (ft)],O.[BreadthofItem (ft)],O.[HeightofItem (ft)],O.isActive,SD.IsFragile,SD.DestinationCity,SD.SourceCity,SD.[Subtotal Amount] from [Order] as O inner join [ShipmentDetails] as SD on O.OrderId = SD.OrderId inner join [ItemDetails] as ID on O.OrderId=ID.OrderId and O.OrderId=" + "\'" + req.params.orderId + "\'"
@@ -266,12 +264,12 @@ app.get('/order/modify/:orderId/:userId', function (req,res){
 
 app.post('/modifyOrder', function (req,res){
     console.log(req.body.isFragile)
-    sql.connect(config, async function (err) {
-
+    connection.connect(err => {
         if (err) {
-            console.log(err);
-            displayError(res, err)
+          console.error('Error connecting to MySQL:', err);
+          return;
         }
+        console.log('Connected to MySQL');
 
         var request = new sql.Request();
         var cmd = "Update [Order] set IsFragile=";
@@ -306,7 +304,7 @@ app.post('/modifyOrder', function (req,res){
 });
 
 app.post('/viewRates', function(req,res){
-    sql.connect(config, async function (err) {
+    config.connect(config, async function (err) {
         if (err) {
             console.log(err);
             displayError(res, err)
@@ -331,7 +329,7 @@ app.post('/addRate', function (req,res){
 });
 
 app.post('/rate/new', function (req, res){
-    sql.connect(config, async function (err) {
+    config.connect(config, async function (err) {
         if (err) {
             console.log(err);
             displayError(res, err)
@@ -356,7 +354,7 @@ app.post('/rate/new', function (req, res){
 });
 
 app.get('/rate/modify/:itemCat/:userId', function (req, res){
-    sql.connect(config, async function (err) {
+    config.connect(config, async function (err) {
         if (err) {
             console.log(err);
             displayError(res, err)
@@ -377,7 +375,7 @@ app.get('/rate/modify/:itemCat/:userId', function (req, res){
 });
 
 app.get('/rate/delete/:itemCat/:userId', function (req, res){
-    sql.connect(config, async function (err) {
+    config.connect(config, async function (err) {
         if (err) {
             console.log(err);
             displayError(res, err)
@@ -398,7 +396,7 @@ app.get('/rate/delete/:itemCat/:userId', function (req, res){
 });
 
 app.post('/rate/modify', function (req, res) {
-    sql.connect(config, async function (err) {
+    config.connect(config, async function (err) {
         if (err) {
             console.log(err);
             displayError(res, err)
@@ -425,12 +423,12 @@ app.post('/rate/modify', function (req, res) {
 });
 
 app.get('/order/cancel/:orderId/:userId', function (req, res) {
-    sql.connect(config, async function (err) {
-
+    connection.connect(err => {
         if (err) {
-            console.log(err);
-            displayError(res, err)
+          console.error('Error connecting to MySQL:', err);
+          return;
         }
+        console.log('Connected to MySQL');
 
         var request = new sql.Request();
         var cmd = "Update [Order] set isActive="+"\'"+false+"\' where OrderId=\'"+req.params.orderId+"\'";
