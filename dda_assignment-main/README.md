@@ -1,1 +1,1 @@
-Coureir_Mgmt app
+Courier_Mgmt app
