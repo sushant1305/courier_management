@@ -12,7 +12,7 @@ pipeline {
             steps {
                 echo 'Starting to build ${JOB_NAME}'
                 script {
-                    def customImage = docker.build("courier_mgmt:${env.BUILD_ID}")
+                    def app = docker.build("courier_mgmt:${env.BUILD_ID}")
                 }
             }  
         }
@@ -21,7 +21,8 @@ pipeline {
                 echo 'Publishing ${JOB_NAME}'
                 script {
                         docker.withRegistry('') {
-                        dockerImage.push()
+                            app.push("${env.BUILD_NUMBER}")
+                            app.push("latest")
                     }
                 }
             }  
