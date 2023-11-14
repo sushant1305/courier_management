@@ -17,9 +17,7 @@ pipeline {
             steps {
                 echo 'Publishing ${JOB_NAME}'
                 script {
-                        docker.withRegistry('192.168.0.130:5000','') {
-                            app.push("${env.BUILD_NUMBER}")
-                            app.push("latest")
+                        sh "docker push 192.168.0.130:5000/courier_management/courier_mgmt:latest"
                     }
                 }
             }  
