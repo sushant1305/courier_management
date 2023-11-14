@@ -17,7 +17,7 @@ pipeline {
             steps {
                 echo 'Tag ${JOB_NAME} Image'
                 script {
-                        sh "docker tag courier_mgmt 192.168.0.130:5000/courier_mgmt:${env.BUILD_ID}"
+                        sh "docker tag courier_mgmt:${env.BUILD_ID} 192.168.0.130:5000/courier_mgmt:${env.BUILD_ID}"
                     }
                 }
             }
