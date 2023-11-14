@@ -7,7 +7,7 @@ pipeline {
     stages {
         stage('Build Image') {
             steps {
-                echo 'Starting to build '${JOB_NAME}
+                echo 'Starting to build ${JOB_NAME}'
                 script {
                     def customImage = docker.build("courier_mgmt:${env.BUILD_ID}")
                 }
@@ -15,7 +15,7 @@ pipeline {
         }
         stage('Publish Image') {
             steps {
-                echo 'Publishing '${JOB_NAME}
+                echo 'Publishing ${JOB_NAME}'
                 script {
                         docker.withRegistry('192.168.0.130:5000') {
                         dockerImage.push()
