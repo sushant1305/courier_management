@@ -2,6 +2,9 @@ pipeline {
 	options {
     buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '10'))
 	}
+    environment{
+        registry = "192.168.0.130:5000/courier_mgmt"       
+    }
     /* agent { docker { image 'node:20.9.0-alpine3.18' } } */
     agent any
     stages {
@@ -17,7 +20,7 @@ pipeline {
             steps {
                 echo 'Publishing ${JOB_NAME}'
                 script {
-                        docker.withRegistry('192.168.0.130:5000') {
+                        docker.withRegistry('') {
                         dockerImage.push()
                     }
                 }
