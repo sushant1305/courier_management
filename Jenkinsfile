@@ -5,7 +5,13 @@ pipeline {
     agent { docker { image 'node:20.9.0-alpine3.18' } }
     stages {
         stage('Build Image') {
-            app = docker.build("courier_management/v1.0") 
+            steps {
+                echo 'Starting to build docker image'
+                script {
+                    def customImage = docker.build("courier_mgmt:${env.BUILD_ID}")
+                    customImage.push()
+                }
+            }
         }
         stage('Clean workspace') {
             steps {
