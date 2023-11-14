@@ -9,5 +9,10 @@ pipeline {
                 sh 'node --version'
             }
         }
+        stage('Clean workspace') {
+            steps {
+                cleanWs()
+            }
+        }
     }
 }
