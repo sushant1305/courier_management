@@ -13,6 +13,22 @@ pipeline {
                 }
             }  
         }
+        stages {
+        stage('Sonar Scan') {
+            environment {
+                        SCANNER_HOME = tool 'Sonar-scanner'
+                        }
+            steps {
+                withSonarQubeEnv(credentialsId: 'sonar-credentials', installationName: 'Sonar') {
+                    sh '''$SCANNER_HOME/bin/sonar-scanner \
+                            -Dsonar.projectKey=dissertation \
+                            -Dsonar.projectName=courier_mgmt \
+                            -Dsonar.sources=views/ \
+                            -Dsonar.projectVersion=${BUILD_NUMBER}-${GIT_COMMIT_SHORT}'''
+                    }
+                }  
+            }
+
         stage('Tag Image') {
             steps {
                 echo 'Tag ${JOB_NAME} Image'
