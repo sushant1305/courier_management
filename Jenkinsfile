@@ -4,15 +4,11 @@ pipeline {
 	}
     agent { docker { image 'node:20.9.0-alpine3.18' } }
     stages {
-        stage('build') {
-            steps {
-                sh 'node --version'
-            }
+        stage('Build Image') {
+            app = docker.build("courier_management/1.0") 
         }
         stage('Clean workspace') {
-            steps {
                 cleanWs()
-            }
         }
     }
 }
