@@ -17,7 +17,7 @@ pipeline {
             steps {
                 echo 'Publishing ${JOB_NAME}'
                 script {
-                        sh "docker push 192.168.0.130:5000/courier_management/courier_mgmt:latest"
+                        sh "docker push 192.168.0.130:5000/courier_mgmt:${env.BUILD_ID}"
                     }
                 }
             }  
