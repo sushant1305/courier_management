@@ -13,7 +13,6 @@ pipeline {
                 }
             }  
         }
-        stages {
         stage('Sonar Scan') {
             environment {
                         SCANNER_HOME = tool 'Sonar-scanner'
@@ -27,7 +26,7 @@ pipeline {
                             -Dsonar.projectVersion=${BUILD_NUMBER}-${GIT_COMMIT_SHORT}'''
                     }
                 }  
-            }
+        }  
 
         stage('Tag Image') {
             steps {
@@ -53,4 +52,4 @@ pipeline {
         }
     }
 }
-}
+
