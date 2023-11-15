@@ -16,31 +16,32 @@ pipeline {
         stage('sonar-scanner') {
             steps {
                 withSonarQubeEnv('Sonarqube') {
-                    sh '''$SCANNER_HOME/bin/sonar-scanner \
+                    sh '''${tool('sonar-scanner')}/bin/sonar-scanner \
                             -Dsonar.projectKey=dissertation \
                             -Dsonar.projectName=courier_mgmt \
                             -Dsonar.sources=views/ \
                             -Dsonar.projectVersion=${BUILD_NUMBER}-${GIT_COMMIT_SHORT}'''
-                    }
-                }  
-        }  
+                }
+            }  
+        }
+
 
         stage('Tag Image') {
             steps {
                 echo 'Tag ${JOB_NAME} Image'
                 script {
                         sh "docker tag courier_mgmt:${env.BUILD_ID} 192.168.0.130:5000/courier_mgmt:latest"
-                    }
                 }
             }
+        }
         stage('Publish Image') {
             steps {
                 echo 'Publishing ${JOB_NAME}'
                 script {
                         sh "docker push 192.168.0.130:5000/courier_mgmt:latest"
-                    }
                 }
-            }  
+            }
+        }  
         
         stage('Clean workspace') {
             steps {
