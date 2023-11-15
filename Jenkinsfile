@@ -16,11 +16,7 @@ pipeline {
         stage('sonar-scanner') {
             steps {
                 withSonarQubeEnv('Sonarqube') {
-                    sh '''${tool('sonar-scanner')}/bin/sonar-scanner \
-                            -Dsonar.projectKey=dissertation \
-                            -Dsonar.projectName=courier_mgmt \
-                            -Dsonar.sources=views/ \
-                            -Dsonar.projectVersion=${BUILD_NUMBER}-${GIT_COMMIT_SHORT}'''
+                    sh "${tool('sonar-scanner')}/bin/sonar-scanner -Dsonar.projectKey=dissertation -Dsonar.projectName=courier_mgmt -Dsonar.sources=views -Dsonar.projectVersion=${BUILD_NUMBER}-${GIT_COMMIT_SHORT}"
                 }
             }  
         }
