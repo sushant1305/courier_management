@@ -15,7 +15,7 @@ pipeline {
         }
         stage('sonar-scanner') {
             steps {
-                withSonarQubeEnv(credentialsId: 'sonar-credentials', installationName: 'Sonarqube') {
+                withSonarQubeEnv('Sonarqube') {
                     sh '''$SCANNER_HOME/bin/sonar-scanner \
                             -Dsonar.projectKey=dissertation \
                             -Dsonar.projectName=courier_mgmt \
