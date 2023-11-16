@@ -24,7 +24,7 @@
         name: "{{ package }}"
         state: present
 
-    - name: Install node if not present
+    - name: Install docker sdk
       package:
         name: "python3-docker"
         state: present
@@ -39,7 +39,7 @@
     - name: Pull the courier_management image
       shell:
         cmd: docker save -o /home/cddeploy/docker/courier_mgmt.tar 192.168.0.130:5000/courier_mgmt:latest
-      become: true
+      delegate_to: controller
 
     - name: Copy from controller to prod server
       tags: deploy
@@ -51,6 +51,7 @@
       docker_container:
         name: courier
         state: stopped
+      become: true
       vars:
         ansible_python_interpreter: /usr/bin/python3
     
