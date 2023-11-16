@@ -46,9 +46,9 @@
       copy:
           src: /home/cddeploy/docker/courier_mgmt.tar
           dest: /home/cddeploy/docker/courier_mgmt.tar
-    
+  
     - name: Load courier_management image
-      docker_image_load:
+      community.docker.docker_image_load:
         path: /home/cddeploy/docker/courier_mgmt.tar
       register: result
 
