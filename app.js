@@ -532,6 +532,6 @@ function completeOrderWithPayment(cmd, details, request, res, heading, userId) {
     });
 }
 
-var server = app.listen(5000, function () {
+var server = app.listen(7000, function () {
     console.log('Server is running..');
 });

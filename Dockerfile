@@ -11,3 +11,4 @@ RUN apk --update add unixodbc
 #RUN apk add --no-cache python3
 RUN npm update
 CMD ["node","--watch","app.js"]
+EXPOSE 7000
