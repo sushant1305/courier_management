@@ -3,7 +3,7 @@ pipeline {
     buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '10'))
 	}
     /* agent { docker { image 'node:20.9.0-alpine3.18' } } */
-    agent any
+    agent "controlleragent"
     stages {
         stage('Build Image') {
             steps {
