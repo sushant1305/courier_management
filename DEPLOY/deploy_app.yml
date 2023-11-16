@@ -39,12 +39,18 @@
     - name: Pull the courier_management image
       shell:
         cmd: docker save -o /home/cddeploy/docker/courier_mgmt.tar 192.168.0.130:5000/courier_mgmt:latest
-      
+      become: true
+
     - name: Copy from controller to prod server
       tags: deploy
       copy:
           src: /home/cddeploy/docker/courier_mgmt.tar
           dest: /home/cddeploy/docker/courier_mgmt.tar
+    
+    - name: Stop a container
+      docker_container:
+        name: mycontainer
+        state: stopped
     
     - name: Load image from archive and push to a private registry
       docker_image:
