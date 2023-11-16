@@ -37,15 +37,10 @@
         enabled: yes
 
     - name: Pull the courier_management image
-      docker_image:
-        name: courier_mgmt
-        repository: http://192.168.0.130:5000/courier_mgmt:latest
-        source: pull
-      delegate_to: localhost
-      vars:
-        ansible_python_interpreter: /usr/bin/python3
+      shell:
+        cmd: docker save -o /home/cddeploy/docker/courier_mgmt.tar 192.168.0.130:5000/courier_mgmt:latest
       
-    - name: Copy Remote-To-Remote (from serverA to serverB)
+    - name: Copy from controller to prod server
       tags: deploy
       copy:
           src: /home/cddeploy/docker/courier_mgmt.tar
