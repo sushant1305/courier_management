@@ -14,17 +14,12 @@ var sql = require('mssql/msnodesqlv8');
 var loggedInUser = ''
 
 var config = {
-    //Azure DB
-    //user: 'cddeploy',
-    //password: 'Admin123#',
-    //server: 'SUSHANT-DESKTOP\\SQLEXPRESS',
-    
-    //Local DB
     user: 'admin123',
-    password: 'admin123',
-    server: 'appdb-dissertation.database.windows.net',
+    password: 'Admin123!',
+    server: 'localhost',
+    // server: 'WPU5CD929158PLW\\MSSQLSERVER01',
     driver: 'msnodesqlv8',
-    database: 'Courier_Management'
+    database: 'Courier_Management_1'
 };
 
 app.get('/home', function (req, res) {

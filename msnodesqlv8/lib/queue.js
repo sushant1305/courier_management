@@ -2,73 +2,91 @@
 
 const queueModule = ((() => {
   const priorityQueue = require('./data-struture/priority-queue/PriorityQueue')
-  function WorkQueue () {
-    const workQueue = new priorityQueue.PriorityQueue()
-    let operationId = 0
+  class WorkItem {
+    constructor (commandType, fn, args, operationId) {
+      this.paused = false
+      this.commandType = commandType
+      this.fn = fn
+      this.args = args
+      this.operationId = operationId
+    }
 
-    function emptyQueue () {
-      while (!workQueue.isEmpty()) {
-        workQueue.poll()
+    run () {
+      this.fn.apply(this.fn, this.args)
+    }
+  }
+
+  class WorkQueue {
+    constructor () {
+      this.workQueue = new priorityQueue.PriorityQueue()
+      this.operationId = 0
+    }
+
+    emptyQueue () {
+      while (!this.workQueue.isEmpty()) {
+        this.workQueue.poll()
       }
     }
 
-    function execQueueOp (op) {
-      const peek = workQueue.peek()
-      workQueue.add(op, op.operationId)
-      if (!peek || peek.paused) {
-        op.fn.apply(op.fn, op.args)
+    execQueueOp (op) {
+      const peek = this.workQueue.peek()
+      this.workQueue.add(op, op.operationId)
+      if (peek == null || peek.paused) {
+        op.run()
       }
     }
 
-    function enqueue (commandType, fn, args) {
-      const op = {
-        commandType,
-        fn,
-        args,
-        operationId,
-        paused: false
-      }
-      ++operationId
-      execQueueOp(op)
+    enqueue (commandType, fn, args) {
+      const id = this.operationId
+      const op = new WorkItem(commandType, fn, args, id)
+      ++this.operationId
+      this.execQueueOp(op)
       return op
     }
 
-    function park (item) {
-      workQueue.changePriority(item, Number.MAX_SAFE_INTEGER)
+    park (item) {
+      this.workQueue.changePriority(item, Number.MAX_SAFE_INTEGER)
       item.paused = true
-      const peek = workQueue.peek()
+      const peek = this.workQueue.peek()
       if (!peek.paused) {
-        nextOp()
+        this.nextOp()
       }
     }
 
-    function resume (item) {
-      workQueue.changePriority(item, item.operationId)
+    resume (item) {
+      this.workQueue.changePriority(item, item.operationId)
       item.paused = false
     }
 
-    function dropItem (item) {
-      return workQueue.remove(item)
+    dropItem (item) {
+      return this.workQueue.remove(item)
     }
 
-    function exec () {
-      const op = workQueue.peek()
+    exec () {
+      const op = this.workQueue.peek()
       if (op && !op.paused) {
-        op.fn.apply(op.fn, op.args)
+        op.run()
       }
     }
 
-    function nextOp () {
-      workQueue.remove(workQueue.peek())
-      exec()
+    nextOp () {
+      this.workQueue.remove(this.workQueue.peek())
+      this.exec()
     }
 
-    function length () {
-      return workQueue.length()
+    length () {
+      return this.workQueue.length()
     }
 
-    function first (primitive) {
-      const ops = []
+    pushRange (ops) {
+      while (ops.length > 0) {
+        const op = ops.pop()
+        this.workQueue.add(op, op.operationId)
+      }
+    }
+
+    moveUntil (primitive, ops) {
+      const workQueue = this.workQueue
       let ret = null
       while (!workQueue.isEmpty()) {
         const op = workQueue.peek()
@@ -80,28 +98,18 @@ const queueModule = ((() => {
         workQueue.remove(peek)
         ops.push(peek)
       }
-      while (ops.length > 0) {
-        const op = ops.pop()
-        workQueue.add(op, op.operationId)
-      }
       return ret
     }
 
-    function peek () {
-      return workQueue.peek()
+    first (primitive) {
+      const ops = []
+      const ret = this.moveUntil(primitive, ops)
+      this.pushRange(ops)
+      return ret
     }
 
-    return {
-      resume,
-      park,
-      peek,
-      exec,
-      first,
-      dropItem,
-      nextOp,
-      emptyQueue,
-      enqueue,
-      length
+    peek () {
+      return this.workQueue.peek()
     }
   }
 
