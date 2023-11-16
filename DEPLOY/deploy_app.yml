@@ -39,7 +39,7 @@
     - name: Pull the courier_management image
       shell:
         cmd: docker save -o /home/cddeploy/docker/courier_mgmt.tar 192.168.0.130:5000/courier_mgmt:latest
-      delegate_to: controller
+      connection: local
 
     - name: Copy from controller to prod server
       tags: deploy
