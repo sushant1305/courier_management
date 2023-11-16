@@ -35,6 +35,7 @@ namespace mssql
 			c_type(0),
 			sql_type(0),
 			param_size(0),
+			max_length(0),
 			digits(0),
 			buffer(nullptr),
 			buffer_len(0),
@@ -45,6 +46,7 @@ namespace mssql
 			bcp_terminator_len(0),
 			bcp_terminator(NULL),
 			is_tvp(false),
+			is_money(false),
 			tvp_no_cols(0),
 			definedPrecision(false),
 			definedScale(false),
@@ -77,6 +79,7 @@ namespace mssql
 		SQLSMALLINT c_type;
 		SQLSMALLINT sql_type;
 		SQLULEN param_size;
+		SQLULEN max_length;
 		SQLSMALLINT digits;
 		SQLPOINTER buffer;
 		SQLLEN buffer_len;
@@ -89,6 +92,7 @@ namespace mssql
 		LPCBYTE bcp_terminator;
 
 		bool is_tvp;
+		bool is_money;
 		int tvp_no_cols;
 		wstring name;
 
@@ -124,8 +128,17 @@ namespace mssql
 		void bind_tiny_int(const Local<Value> & p);
 
 		void bind_numeric(const Local<Value> & p);
+		void bind_numeric_struct(double d, SQL_NUMERIC_STRUCT & ns);
 		void bind_numeric_array(const Local<Value> & p);
 		void reserve_numeric(SQLLEN len);
+
+		void bind_int8(const Local<Value> & p);
+		void reserve_int8(SQLLEN len);
+		void bind_int8_array(const Local<Value> & p);
+
+		void bind_int16(const Local<Value> & p);
+		void reserve_int16(SQLLEN len);
+		void bind_int16_array(const Local<Value> & p);
 
 		void bind_int32(const Local<Value> & p);
 		void reserve_int32(SQLLEN len);
@@ -143,6 +156,10 @@ namespace mssql
 	
 		void bind_float(const Local<Value> & p);
 		void bind_real(const Local<Value> & p);
+
+		void bind_decimal(const Local<Value>& p);
+		void reserve_decimal(SQLLEN len);
+		void bind_decimal_array(const Local<Value>& p);
 
 		void bind_double(const Local<Value>& p);
 		void reserve_double(SQLLEN len);
@@ -169,6 +186,11 @@ namespace mssql
 
 		void bind_tvp(Local<Value> & p);
 
+		void bind_binary( Local<Value> & p);
+		void bind_binary_array(const Local<Value> & p);
+		void bind_binary_array_bcp(const Local<Value> & p);
+		void reserve_binary_array(size_t max_obj_len, size_t  array_len);
+
 		void bind_var_binary( Local<Value> & p);
 		void bind_var_binary_array(const Local<Value> & p);
 		void bind_var_binary_array_bcp(const Local<Value> & p);
@@ -185,7 +207,7 @@ namespace mssql
 		void bind_var_char_array_bcp(const Local<Value>& p);
 		void bind_var_char_array(const Local<Value>& p);
 		void bind_var_char(const Local<Value> & p, int precision);
-		void reserve_var_char(size_t precision, size_t  array_len);
+		void reserve_var_char_array(size_t precision, size_t  array_len);
 		bool user_bind(Local<Value> &p, Local<Value> &v);
 		void assign_precision(Local<Object> &pv);
 
@@ -200,6 +222,7 @@ namespace mssql
 		void sql_real(Local<Value> pp);
 		void sql_tinyint(Local<Value> pp);
 		void sql_smallint(Local<Value> pp);
+		void sql_decimal(const Local<Value> pp);
 		void sql_numeric(Local<Value> pp);
 		void sql_char(Local<Value> pp);
 		void sql_varchar(Local<Value> pp);
@@ -208,7 +231,8 @@ namespace mssql
 		void sql_type_timestamp(Local<Value> pp);
 		void sql_ss_timestampoffset(Local<Value> pp);
 		void sql_varbinary(Local<Value> pp);
-		size_t get_default_size(size_t len);
+		void sql_binary(Local<Value> pp);
+		size_t get_default_size(size_t len) const;
 
 		static Local<Value> unbind_null();
 		Local<Value> unbind_string() const;
