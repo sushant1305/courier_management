@@ -38,9 +38,8 @@
         enabled: yes
 
     - name: Stop a container
-      docker_container:
-        name: courier
-        state: stopped
+      shell:
+        cmd: docker stop courier
       become: true
 
     - name: Remove the {{ app_name }} image
