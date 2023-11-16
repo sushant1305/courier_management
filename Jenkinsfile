@@ -44,7 +44,7 @@ pipeline {
             steps{
                 echo 'Proceeding with deployment'
                 script{
-                    sh "ansible-playbook --vault-password-file=.ansible_vault.password -v -i /home/cddeploy/ansible/infrastructure/inventory/hosts.ini --tags deploy DEPLOY/deploy_app.yml"
+                    sh "ansible-playbook --vault-password-file=.ansible_vault.password -v -i /home/cddeploy/ansible/infrastructure/inventory/hosts.ini DEPLOY/deploy_app.yml"
                 }
             }
 
