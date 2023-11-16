@@ -1,0 +1,58 @@
+---
+- name: Docker Installation
+  hosts: app_prod
+  remote_user: cddeploy
+  become_method: sudo
+  gather_facts: false
+  vars_files:
+    - root_password.yml
+  vars:
+    ansible_become_pass: "{{ sudo_pass }}"
+    docker_installation: "/home/cddeploy/docker"
+    package: "docker"
+
+  tasks:
+    - name: Create docker directory
+      tags: deploy
+      file:
+        path: "{{ docker_installation }}"
+        state: directory
+        mode: '0755'
+    
+    - name: Install Docker if not present
+      package:
+        name: "{{ package }}"
+        state: present
+
+    - name: Install node if not present
+      package:
+        name: "nodejs"
+        state: present
+      become: true
+
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Pull the courier_management image
+      docker_image:
+        name: courier_mgmt
+        repository: http://192.168.0.130:5000/courier_mgmt:latest
+        source: pull
+      delegate_to: localhost
+      vars:
+        ansible_python_interpreter: /usr/bin/python3
+      
+    - name: Copy Remote-To-Remote (from serverA to serverB)
+      tags: deploy
+      copy:
+          src: /home/cddeploy/docker/courier_mgmt.tar
+          dest: /home/cddeploy/docker/courier_mgmt.tar
+    
+    - name: Load image from archive and push to a private registry
+      docker_image:
+        name: courier_mgmt
+        load_path: /home/cddeploy/docker/courier_mgmt.tar
+        source: load

@@ -31,6 +31,24 @@ pipeline {
             }
         }  
         
+        stage('Proceed to Deployment'){
+            steps{
+                echo 'Wating for approval'
+                script{
+                    input 'Deploy'
+                }
+            }
+        }
+
+        stage('Deploy'){
+            steps{
+                echo 'Proceeding with deployment'
+                script{
+                    sh "ansible-playbook --vault-password-file=.ansible_vault.password -v -i /home/cddeploy/ansible/infrastructure/inventory/hosts.ini --tags deploy deploy_app.yml"
+                }
+            }
+
+        }
         stage('Clean workspace') {
             steps {
                 cleanWs()
