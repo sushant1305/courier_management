@@ -8,6 +8,6 @@ COPY public /app/public/
 COPY views /app/views/
 WORKDIR /app/
 #RUN apk --update add python
-RUN ls -ltr
-RUN npm install
+#RUN apk add --no-cache python3
+RUN npm update
 CMD ["node","--watch","app.js"]
