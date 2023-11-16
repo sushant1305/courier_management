@@ -26,7 +26,7 @@
 
     - name: Install node if not present
       package:
-        name: "nodejs"
+        name: "python3-docker"
         state: present
       become: true
 
@@ -49,7 +49,7 @@
     
     - name: Stop a container
       docker_container:
-        name: mycontainer
+        name: courier
         state: stopped
       vars:
         ansible_python_interpreter: /usr/bin/python3
