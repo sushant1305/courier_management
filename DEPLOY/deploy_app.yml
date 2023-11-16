@@ -51,6 +51,7 @@
       community.docker.docker_image_load:
         path: /home/cddeploy/docker/courier_mgmt.tar
       register: result
+      become: true
 
     - name: Print the loaded image names
       debug:
