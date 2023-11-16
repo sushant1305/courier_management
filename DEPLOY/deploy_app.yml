@@ -41,6 +41,7 @@
       shell:
         cmd: docker stop courier
       become: true
+      ignore_errors: true
 
     - name: Remove the {{ app_name }} image
       community.docker.docker_image:
@@ -70,3 +71,14 @@
     - name: Print the loaded image names
       debug:
         msg: "Loaded the following images: {{ result.image_names | join(', ') }}"
+    
+
+    - name: Run the {{ app_name }} image
+      community.docker.docker_container:
+        name: courier
+        image: 192.168.0.130:5000/courier_mgmt:latest
+        state: started
+        restart: true
+        ports:
+          - "7000:7000"
+      become: true
