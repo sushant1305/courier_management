@@ -9,7 +9,7 @@ app.set('view engine', 'ejs');
 app.use(express.json());
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({extended: false}));
-var sql = require('mssql/msnodesqlv8');
+var sql = require('mssql');
 
 var loggedInUser = ''
 
@@ -24,9 +24,15 @@ var config = {
     //password: 'admin123',
     //server: 'SUSHANT-DESKTOP\\SQLEXPRESS',
     
-    driver: 'msnodesqlv8',
+    //driver: 'msnodesqlv8',
     //driver: '{ODBC Driver 17 for SQL Server}',
-    database: 'Courier_Management'
+    database: 'Courier_Management',
+    authentication: {
+        type: 'default'
+    },
+    options: {
+        encrypt: true
+    }
 };
 
 app.get('/home', function (req, res) {

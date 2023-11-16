@@ -10,4 +10,5 @@ WORKDIR /app/
 RUN apk --update add unixodbc
 #RUN apk add --no-cache python3
 RUN npm update
+RUN npm install mssql
 CMD ["node","--watch","app.js"]
