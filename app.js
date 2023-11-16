@@ -15,14 +15,15 @@ var loggedInUser = ''
 
 var config = {
     //Azure DB
-    //user: 'cddeploy',
-    //password: 'Admin123#',
-    //server: 'SUSHANT-DESKTOP\\SQLEXPRESS',
+    user: 'cddeploy',
+    password: 'Admin123#',
+    server: 'appdb-dissertation.database.windows.net',
     
     //Local DB
-    user: 'admin123',
-    password: 'admin123',
-    server: 'appdb-dissertation.database.windows.net',
+    //user: 'admin123',
+    //password: 'admin123',
+    //server: 'SUSHANT-DESKTOP\\SQLEXPRESS',
+    
     driver: 'msnodesqlv8',
     database: 'Courier_Management'
 };
