@@ -24,7 +24,8 @@ var config = {
     //password: 'admin123',
     //server: 'SUSHANT-DESKTOP\\SQLEXPRESS',
     
-    driver: 'msnodesqlv8',
+    //driver: 'msnodesqlv8',
+    driver: '{ODBC Driver 17 for SQL Server}',
     database: 'Courier_Management'
 };
 
