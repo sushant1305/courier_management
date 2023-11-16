@@ -14,6 +14,14 @@ pipeline {
             }  
         }
         
+        stage('sonar-scanner') {
+            steps {
+                withSonarQubeEnv('Sonarqube') {
+                    sh "${tool('sonar-scanner')}/bin/sonar-scanner -Dsonar.token=sqa_75a473269119e26cd79c57c9feda56893613c7a9 -Dsonar.projectKey=dissertation -Dsonar.projectName=courier_mgmt -Dsonar.sources=. -Dsonar.projectVersion=${BUILD_NUMBER}"
+                }
+            }  
+        }
+        
         stage('Tag Image') {
             steps {
                 echo 'Tag ${JOB_NAME} Image'
