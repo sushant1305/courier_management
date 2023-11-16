@@ -2,210 +2,119 @@
 
 const poolModule = (() => {
   const util = require('util')
+  const cppDriver = require('../build/Release/sqlserverv8')
   const { EventEmitter } = require('stream')
   const { procedureModule } = require('./procedure')
   const { driverModule } = require('./driver')
-  const sqlClientModule = require('./sql-client').sqlCLientModule
+  const { connectionModule } = require('./connection')
   const { notifyModule } = require('./notifier')
   const { utilModule } = require('./util')
   const { tableModule } = require('./table')
   const userModule = require('./user').userModule
   const { metaModule } = require('./meta')
-  const cppDriver = new utilModule.Native().cppDriver
-
-  class PoolWorkItem {
-    constructor (id, sql, paramsOrCallback, callback, poolNotifier, workType, chunky) {
-      this.id = id
-      this.sql = sql
-      this.paramsOrCallback = paramsOrCallback
-      this.callback = callback
-      this.poolNotifier = poolNotifier
-      this.workType = workType
-      this.chunky = chunky
-    }
-  }
-
-  class PoolDscription {
-    constructor (id, pool, connection) {
-      this.id = id
-      this.pool = pool
-      this.connection = connection
-      this.heartbeatSqlResponse = null
-      this.lastActive = new Date()
-      this.work = null
-      this.keepAliveCount = 0
-      this.recreateCount = 0
-      this.parkedCount = 0
-      this.queriesSent = 0
-      this.beganAt = null
-      this.totalElapsedQueryMs = 0
-    }
-
-    begin () {
-      const now = new Date()
-      this.beganAt = now
-      this.lastActive = now
-      this.keepAliveCount = 0
-      this.queriesSent++
-    }
-
-    free () {
-      this.totalElapsedQueryMs += new Date() - this.beganAt
-    }
-
-    heartbeatResponse (v) {
-      this.heatbeatSqlResponse = v
-    }
-
-    heartbeat () {
-      this.keepAliveCount++ // reset by user query
-      this.lastActive = new Date()
-    }
-
-    assignConnection (c) {
-      this.connection = c
-      this.work = null
-      this.heartbeatSqlResponse = null
-      this.lastActive = new Date()
-      this.keepAliveCount = 0
-    }
-
-    recreate (conn) {
-      this.connection = conn
-      this.lastActive = new Date()
-      this.heartbeatSqlResponse = null
-      this.recreateCount++
-    }
-
-    park () {
-      this.connection = null
-      this.parkedCount++
-      this.keepAliveCount = 0
-      this.beganAt = null
-    }
-  }
 
   class PoolEventCaster extends EventEmitter {
     constructor () {
       super()
-      this.queryObj = null
-      this.paused = false
-      this.pendingCancel = false
-    }
+      let queryObj = null
+      let paused = false
+      let pendingCancel = false
 
-    isPaused () {
-      return this.paused
-    }
+      function isPaused () {
+        return paused
+      }
 
-    getQueryObj () {
-      return this.queryObj
-    }
+      function getQueryObj () {
+        return queryObj
+      }
 
-    getQueryId () {
-      return this.queryObj != null ? this.queryObj : -1
-    }
+      function getQueryId () {
+        return queryObj != null ? queryObj : -1
+      }
 
-    isPendingCancel () {
-      return this.pendingCancel
-    }
+      function isPendingCancel () {
+        return pendingCancel
+      }
 
-    cancelQuery (cb) {
-      if (this.queryObj) {
-        this.queryObj.cancelQuery(cb)
-      } else {
-        this.pendingCancel = true
-        setImmediate(() => {
-          if (cb) {
-            cb()
-          }
+      function cancelQuery (cb) {
+        if (queryObj) {
+          queryObj.cancelQuery(cb)
+        } else {
+          pendingCancel = true
+          setImmediate(() => {
+            if (cb) {
+              cb()
+            }
+          })
+        }
+      }
+
+      function pauseQuery () {
+        paused = true
+        if (queryObj) {
+          queryObj.pause()
+        }
+      }
+
+      function resumeQuery () {
+        paused = false
+        if (queryObj) {
+          queryObj.resume()
+        }
+      }
+
+      function setQueryObj (q, chunky) {
+        queryObj = q
+        q.on('submitted', (d) => {
+          this.emit('submitted', d)
+        })
+
+        if (!chunky.callback) {
+          q.on('error', (e, more) => {
+            if (this.listenerCount('error') > 0) {
+              this.emit('error', e, more)
+            }
+          })
+        }
+
+        q.on('done', (r) => {
+          this.emit('done', r)
+        })
+
+        q.on('row', (r) => {
+          this.emit('row', r)
+        })
+
+        q.on('column', (i, v) => {
+          this.emit('column', i, v)
+        })
+
+        q.on('meta', (m) => {
+          this.emit('meta', m)
+        })
+
+        q.on('info', (e) => {
+          this.emit('info', e)
+        })
+
+        q.on('output', (e) => {
+          this.emit('output', e)
         })
       }
-    }
 
-    pauseQuery () {
-      this.paused = true
-      if (this.queryObj) {
-        this.queryObj.pauseQuery()
-      }
-    }
-
-    resumeQuery () {
-      this.paused = false
-      if (this.queryObj) {
-        this.queryObj.resumeQuery()
-      }
-    }
-
-    setQueryObj (q, chunky) {
-      this.queryObj = q
-      q.on('submitted', (d) => {
-        this.emit('submitted', d)
-      })
-
-      if (!chunky.callback) {
-        q.on('error', (e, more) => {
-          if (this.listenerCount('error') > 0) {
-            this.emit('error', e, more)
-          }
-        })
+      function isPrepared () {
+        return false
       }
 
-      q.on('done', (r) => {
-        this.emit('done', r)
-      })
-
-      q.on('row', (r) => {
-        this.emit('row', r)
-      })
-
-      q.on('column', (i, v) => {
-        this.emit('column', i, v)
-      })
-
-      q.on('meta', (m) => {
-        this.emit('meta', m)
-      })
-
-      q.on('info', (e) => {
-        this.emit('info', e)
-      })
-
-      q.on('output', (e) => {
-        this.emit('output', e)
-      })
-    }
-
-    isPrepared () {
-      return false
-    }
-  }
-
-  class PoolOptions {
-    constructor (opt) {
-      this.floor = Math.max(0, this.getOpt(opt, 'floor', 0))
-      this.ceiling = Math.max(1, this.getOpt(opt, 'ceiling', 4))
-      this.heartbeatSecs = Math.max(1, this.getOpt(opt, 'heartbeatSecs', 20))
-      this.heartbeatSql = this.getOpt(opt, 'heartbeatSql', 'select @@SPID as spid')
-      this.inactivityTimeoutSecs = Math.max(3, this.getOpt(opt, 'inactivityTimeoutSecs', 60))
-      this.connectionString = this.getOpt(opt, 'connectionString', '')
-      this.useUTC = this.getOpt(opt, 'useUTC', null)
-      this.useNumericString = this.getOpt(opt, 'useNumericString', null)
-      this.maxPreparedColumnSize = this.getOpt(opt, 'maxPreparedColumnSize', null)
-      this.floor = Math.min(this.floor, this.ceiling)
-      this.inactivityTimeoutSecs = Math.max(this.inactivityTimeoutSecs, this.heartbeatSecs)
-    }
-
-    getOpt (src, p, def) {
-      if (!src) {
-        return def
-      }
-      let ret
-      if (Object.hasOwnProperty.call(src, p)) {
-        ret = src[p]
-      } else {
-        ret = def
-      }
-      return ret
+      this.isPendingCancel = isPendingCancel
+      this.getQueryObj = getQueryObj
+      this.getQueryId = getQueryId
+      this.setQueryObj = setQueryObj
+      this.cancelQuery = cancelQuery
+      this.pauseQuery = pauseQuery
+      this.resumeQuery = resumeQuery
+      this.isPaused = isPaused
+      this.isPrepared = isPrepared
     }
   }
 
@@ -224,7 +133,7 @@ const poolModule = (() => {
   class Pool extends EventEmitter {
     constructor (opt) {
       super()
-      const clientPromises = sqlClientModule.promises
+      const openPromise = connectionModule.promises.open
       const idle = []
       const parked = []
       const workQueue = []
@@ -250,10 +159,38 @@ const poolModule = (() => {
       const driverMgr = new driverModule.DriverMgr(native)
       const tableMgr = new tableModule.TableMgr(this, sqlMeta, userTypes, poolTableCache)
       const procedureManager = new procedureModule.ProcedureMgr(this, notifierFactory, driverMgr, sqlMeta, poolProcedureCache)
+      const promisesGetProc = util.promisify(procedureManager.getProc)
       const closedError = new Error('pool is closed.')
 
+      function getOpt (src, p, def) {
+        if (!src) {
+          return def
+        }
+        let ret
+        if (Object.hasOwnProperty.call(src, p)) {
+          ret = src[p]
+        } else {
+          ret = def
+        }
+        return ret
+      }
+
       function parseOptions () {
-        return new PoolOptions(opt)
+        const options = {
+          floor: Math.max(0, getOpt(opt, 'floor', 0)),
+          ceiling: Math.max(1, getOpt(opt, 'ceiling', 4)),
+          heartbeatSecs: Math.max(1, getOpt(opt, 'heartbeatSecs', 20)),
+          heartbeatSql: getOpt(opt, 'heartbeatSql', 'select @@SPID as spid'),
+          inactivityTimeoutSecs: Math.max(3, getOpt(opt, 'inactivityTimeoutSecs', 60)),
+          connectionString: getOpt(opt, 'connectionString', ''),
+          useUTC: getOpt(opt, 'useUTC', null),
+          useNumericString: getOpt(opt, 'useNumericString', null),
+          maxPreparedColumnSize: getOpt(opt, 'maxPreparedColumnSize', null)
+        }
+
+        options.floor = Math.min(options.floor, options.ceiling)
+        options.inactivityTimeoutSecs = Math.max(options.inactivityTimeoutSecs, options.heartbeatSecs)
+        return options
       }
 
       const options = parseOptions()
@@ -267,13 +204,29 @@ const poolModule = (() => {
       }
 
       function newDescription (c) {
-        return new PoolDscription(descriptionId++, this, c)
+        return {
+          id: descriptionId++,
+          pool: this,
+          connection: c,
+          heartbeatSqlResponse: null,
+          lastActive: new Date(),
+          lastWorkItem: null,
+          keepAliveCount: 0,
+          recreateCount: 0,
+          parkedCount: 0,
+          queriesSent: 0,
+          totalElapsedQueryMs: 0
+        }
       }
 
       function parkedDescription (c) {
         if (parked.length > 0) {
           const d = parked.pop()
-          d.assignConnection(c)
+          d.connection = c
+          d.lastWorkItem = null
+          d.heartbeatSqlResponse = null
+          d.lastActive = new Date()
+          d.keepAliveCount = 0
           return d
         } else {
           return null
@@ -284,7 +237,8 @@ const poolModule = (() => {
         return parkedDescription(c) || newDescription(c)
       }
 
-      function runTheQuery (q, description, work) {
+      function callTheCall (begin, theCall, description, work) {
+        const q = theCall(work.sql, work.paramsOrCallback, work.callback)
         work.poolNotifier.setQueryObj(q, work.chunky)
         q.on('submitted', () => {
           _this.emit('debug', `[${description.id}] submitted work id ${work.id}`)
@@ -296,7 +250,7 @@ const poolModule = (() => {
         })
 
         q.on('free', () => {
-          description.free()
+          description.totalElapsedQueryMs += new Date() - begin
           checkin('work', description)
           _this.emit('debug', `[${description.id}] free work id ${work.id}`)
           work.poolNotifier.emit('free')
@@ -313,31 +267,33 @@ const poolModule = (() => {
         })
       }
 
-      function getTheQuery (description, work) {
-        let q = null
-        const connection = description.connection
+      function getTheCall (description, work) {
+        let theCall = null
         switch (work.workType) {
           case workTypeEnum.QUERY:
-            q = connection.query(work.sql, work.paramsOrCallback, work.callback)
+            theCall = description.connection.query
             break
 
           case workTypeEnum.RAW:
-            q = connection.queryRaw(work.sql, work.paramsOrCallback, work.callback)
+            theCall = description.connection.queryRaw
             break
 
           case workTypeEnum.PROC:
-            q = connection.callproc(work.sql, work.paramsOrCallback, work.callback)
+            theCall = description.connection.callproc
             break
         }
-        return q
+        return theCall
       }
 
       function item (description, work) {
-        description.begin()
+        const begin = new Date()
+        description.lastActive = begin
+        description.keepAliveCount = 0
+        description.queriesSent++
         _this.emit('debug', `[${description.id}] query work id = ${work.id}, workQueue = ${workQueue.length}`)
-        const q = getTheQuery(description, work)
-        if (q) {
-          runTheQuery(q, description, work)
+        const theCall = getTheCall(description, work)
+        if (theCall) {
+          callTheCall(begin, theCall, description, work)
         }
       }
 
@@ -361,7 +317,7 @@ const poolModule = (() => {
           pause.unshift(add.pop())
         }
         if (start !== pause.length) {
-          setImmediate(() => { crank() })
+          setImmediate(() => crank())
         }
       }
 
@@ -410,10 +366,18 @@ const poolModule = (() => {
       }
 
       function newWorkItem (sql, paramsOrCallback, callback, notifier, workType) {
-        return new PoolWorkItem(commandId++, sql, paramsOrCallback, callback, notifier, workType, chunk(paramsOrCallback, callback, workType))
+        return {
+          id: commandId++,
+          sql,
+          paramsOrCallback,
+          callback,
+          poolNotifier: notifier,
+          workType,
+          chunky: chunk(paramsOrCallback, callback, workType)
+        }
       }
 
-      async function checkClosedPromise () {
+      function checkClosedPromise () {
         return new Promise((resolve, reject) => {
           if (closed) {
             reject(closedError)
@@ -456,26 +420,26 @@ const poolModule = (() => {
         return submit(sql, paramsOrCallback, callback, workTypeEnum.PROC)
       }
 
-      async function getUserTypeTable (name) {
-        // the table mgr will submit query into pool as if it's a connection
-        return checkClosedPromise().then(async () => tableMgr.promises.getUserTypeTable(name))
+      function getUserTypeTable (name) {
+        // the table mgr will submit query into pool as if its a connection
+        return checkClosedPromise().then(() => tableMgr.promises.getUserTypeTable(name))
       }
 
-      async function getTable (name) {
-        return checkClosedPromise().then(async () => tableMgr.promises.getTable(name))
+      function getTable (name) {
+        return checkClosedPromise().then(() => tableMgr.promises.getTable(name))
       }
 
-      async function getProc (name) {
-        return checkClosedPromise().then(async () => procedureManager.promises.getProc(name))
+      function getProc (name) {
+        return checkClosedPromise().then(() => promisesGetProc(name))
       }
 
       // returns a promise of aggregated results not a query
-      async function callprocAggregator (name, params, options) {
-        return checkClosedPromise().then(async () => aggregator.callProc(name, params, options))
+      function callprocAggregator (name, params, options) {
+        return checkClosedPromise().then(() => aggregator.callProc(name, params, options))
       }
 
-      async function queryAggregator (sql, params, options) {
-        return checkClosedPromise().then(async () => aggregator.query(sql, params, options))
+      function queryAggregator (sql, params, options) {
+        return checkClosedPromise().then(() => aggregator.query(sql, params, options))
       }
 
       function enqueue (item) {
@@ -559,14 +523,14 @@ const poolModule = (() => {
         const toPromise = []
         for (let i = existing; i < options.ceiling; ++i) {
           ++pendingCreates
-          toPromise.push(clientPromises.open(options.connectionString)
+          toPromise.push(openPromise(options.connectionString)
             .then(
               c => {
                 --pendingCreates
                 connectionOptions(c)
                 checkin('grow', getDescription(c))
               },
-              async e => {
+              e => {
                 --pendingCreates
                 return Promise.reject(e)
               }
@@ -645,10 +609,11 @@ const poolModule = (() => {
         const description = checkout('heartbeat')
         const q = description.connection.query(options.heartbeatSql)
         q.on('column', (i, v) => {
-          description.heartbeatResponse(v)
+          description.heatbeatSqlResponse = v
         })
         q.on('done', () => {
-          description.heartbeat() // reset by user query
+          description.keepAliveCount++ // reset by user query
+          description.lastActive = new Date()
           checkin('heartbeat', description)
           const inactivePeriod = description.keepAliveCount * options.heartbeatSecs
           _this.emit('debug', `[${description.id}] heartbeat response = '${description.heatbeatSqlResponse}', ${description.lastActive.toLocaleTimeString()}` +
@@ -668,10 +633,12 @@ const poolModule = (() => {
         }
         _this.emit('debug', `[${description.id}] close connection and park due to inactivity parked = ${parked.length}, canPark = ${canPark}`)
         parkingConnectionCount++
-        const connPromises = description.connection.promises
-        connPromises.close().then(() => {
+        const promisedClose = description.connection.promises.close
+        promisedClose().then(() => {
           parkingConnectionCount--
-          description.park()
+          description.connection = null
+          description.parkedCount++
+          description.keepAliveCount = 0
           parked.unshift(description)
           _this.emit('debug', `[${description.id}] closed connection and park due to inactivity parked = ${parked.length}, idle = ${idle.length}, busy = ${busyConnectionCount}`)
           _this.emit('status', getStatus(null, 'parked', 'parked'))
@@ -685,12 +652,15 @@ const poolModule = (() => {
         _this.emit('debug', `recreate connection [${description.id}]`)
         const toPromise = []
         if (description.connection) {
-          const promisedClose = description.connection.promises.close()
+          const promisedClose = description.connection.promises.close
           toPromise.push(promisedClose)
         }
         Promise.all(toPromise).then(() => {
-          clientPromises.open(options.connectionString).then(conn => {
-            description.recreate(conn)
+          openPromise(options.connectionString).then(conn => {
+            description.connection = conn
+            description.lastActive = new Date()
+            description.heartbeatSqlResponse = null
+            description.recreateCount++
             checkin('recreate', description)
           }).catch(e => {
             sendError(e)

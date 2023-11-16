@@ -5,198 +5,152 @@
 'use strict'
 
 const notifyModule = ((() => {
+  const events = require('events')
   const { EventEmitter } = require('stream')
-  class QueryObject {
-    constructor (p, to, po) {
-      this.query_str = p
-      this.query_timeout = to || 0
-      this.query_polling = po || false
-      this.query_tz_adjustment = 0
-    }
-  }
 
-  class LexicalParam {
-    constructor (type, value, name) {
-      this.type = type
-      this.value = value
-      this.name = name
-    }
-  }
+  function NotifyFactory () {
+    class StreamEvents extends EventEmitter {
+      constructor () {
+        super()
+        let queryId = 0
+        let theConnection
+        let queryObj
+        let queryWorker
+        let operation
+        let paused
+        let prepared
 
-  class ChunkyArgs {
-    constructor (params, callback) {
-      this.params = params
-      this.callback = callback || null
-    }
-  }
-
-  class StreamEventsPromises {
-    constructor (se) {
-      this.se = se
-    }
-
-    async cancel (timeout) {
-      timeout = timeout || 5000
-      const q = this.se
-      let err
-      return new Promise((resolve, reject) => {
-        const h = setTimeout(() => {
-          reject(new Error('failed to cancel'))
-        }, timeout)
-        try {
-          q.on('free', () => {
-            err = err || new Error('Operation canceled')
-            resolve(err)
-            clearTimeout(h)
-          })
-          q.on('error', (e) => {
-            err = e
-            if (!e.message.includes('canceled')) {
-              clearTimeout(h)
-              reject(e)
-            } else {
-              err = e
-            }
-          })
-          q.pauseQuery()
-          setImmediate(() => {
-            q.cancelQuery()
-          })
-        } catch (e) {
-          reject(e)
+        function isPaused () {
+          return paused
         }
-      })
-    }
-  }
 
-  class StreamEvents extends EventEmitter {
-    constructor () {
-      super()
-      this.queryId = 0
-      this.theConnection = null
-      this.queryObj = null
-      this.queryWorker = null
-      this.operation = null
-      this.paused = null
-      this.prepared = null
-      this.promises = new StreamEventsPromises(this)
-    }
+        function setPrepared () {
+          prepared = true
+        }
 
-    isPaused () {
-      return this.paused
-    }
+        function isPrepared () {
+          return prepared
+        }
 
-    setPrepared () {
-      this.prepared = true
-    }
+        function getQueryObj () {
+          return queryObj
+        }
 
-    isPrepared () {
-      return this.prepared
-    }
+        function getQueryId () {
+          return queryId
+        }
 
-    getQueryObj () {
-      return this.queryObj
-    }
+        function setQueryId (qid) {
+          queryId = qid
+        }
 
-    getQueryId () {
-      return this.queryId
-    }
+        function setOperation (id) {
+          operation = id
+        }
 
-    setQueryId (qid) {
-      this.queryId = qid
-    }
+        function getOperation () {
+          return operation
+        }
 
-    setOperation (id) {
-      this.operation = id
-    }
+        function setQueryObj (qo) {
+          queryObj = qo
+        }
 
-    getOperation () {
-      return this.operation
-    }
+        function setConn (c) {
+          theConnection = c
+        }
 
-    setQueryObj (qo) {
-      this.queryObj = qo
-    }
+        function setQueryWorker (qw) {
+          queryWorker = qw
+          if (paused) {
+            queryWorker.pause()
+          }
+        }
 
-    setConn (c) {
-      this.theConnection = c
-    }
+        function cancelQuery (cb) {
+          if (theConnection) {
+            theConnection.cancelQuery(this, cb)
+          } else {
+            setImmediate(() => {
+              cb(new Error('[msnodesql] cannot cancel query where setConn has not been set'))
+            })
+          }
+        }
 
-    setQueryWorker (qw) {
-      this.queryWorker = qw
-      if (this.paused) {
-        this.queryWorker.pause()
+        function pauseQuery () {
+          paused = true
+          if (queryWorker) {
+            queryWorker.pause()
+          }
+        }
+
+        function resumeQuery () {
+          paused = false
+          if (queryWorker) {
+            queryWorker.resume()
+          }
+        }
+
+        this.setOperation = setOperation
+        this.getOperation = getOperation
+        this.getQueryObj = getQueryObj
+        this.getQueryId = getQueryId
+        this.setQueryId = setQueryId
+        this.setConn = setConn
+        this.setQueryObj = setQueryObj
+        this.cancelQuery = cancelQuery
+        this.setQueryWorker = setQueryWorker
+        this.pauseQuery = pauseQuery
+        this.resumeQuery = resumeQuery
+        this.isPaused = isPaused
+        this.isPrepared = isPrepared
+        this.setPrepared = setPrepared
+
+        events.EventEmitter.call(this)
       }
     }
 
-    cancelQuery (cb) {
-      if (this.theConnection) {
-        this.theConnection.cancelQuery(this, cb)
-      } else {
-        setImmediate(() => {
-          cb(new Error('[msnodesql] cannot cancel query where setConn has not been set'))
-        })
-      }
-    }
-
-    pauseQuery () {
-      this.paused = true
-      if (this.queryWorker) {
-        this.queryWorker.pause()
-      }
-    }
-
-    resumeQuery () {
-      this.paused = false
-      if (this.queryWorker) {
-        this.queryWorker.resume()
-      }
-    }
-  }
-
-  class NotifyFactory {
-    constructor () {
-      this.StreamEvents = StreamEvents
-      this.LexicalParam = LexicalParam
-      this.QueryObject = QueryObject
-    }
-
-    getChunkyArgs (paramsOrCallback, callback) {
+    function getChunkyArgs (paramsOrCallback, callback) {
       if ((typeof paramsOrCallback === 'object' &&
-          Array.isArray(paramsOrCallback)) &&
+        Array.isArray(paramsOrCallback) === true) &&
         typeof callback === 'function') {
-        return new ChunkyArgs(paramsOrCallback, callback)
+        return { params: paramsOrCallback, callback }
       }
 
       if (!paramsOrCallback && typeof callback === 'function') {
-        return new ChunkyArgs([], callback)
+        return { params: [], callback }
       }
 
       if (typeof paramsOrCallback === 'function' && callback === undefined) {
-        return new ChunkyArgs([], paramsOrCallback)
+        return { params: [], callback: paramsOrCallback }
       }
 
       if ((typeof paramsOrCallback === 'object' &&
-          Array.isArray(paramsOrCallback)) &&
+        Array.isArray(paramsOrCallback) === true) &&
         callback === undefined) {
-        return new ChunkyArgs(paramsOrCallback, null)
+        return { params: paramsOrCallback, callback: null }
       }
 
       if ((!paramsOrCallback) &&
         callback === undefined) {
-        return new ChunkyArgs([], null)
+        return { params: [], callback: null }
       }
 
       throw new Error('[msnodesql] Invalid parameter(s) passed to function query or queryRaw.')
     }
 
-    getQueryObject (p) {
+    function getQueryObject (p) {
       return typeof (p) === 'string'
-        ? new QueryObject(p)
+        ? {
+            query_str: p,
+            query_timeout: 0,
+            query_polling: false,
+            query_tz_adjustment: 0
+          }
         : p
     }
 
-    validateParameters (parameters, funcName) {
+    function validateParameters (parameters, funcName) {
       parameters.forEach(p => {
         if (typeof p.value !== p.type) {
           throw new Error(['[msnodesql] Invalid ', p.name, ' passed to function ', funcName, '. Type should be ', p.type, '.'].join(''))
@@ -204,22 +158,31 @@ const notifyModule = ((() => {
       })
     }
 
-    validateQuery (queryOrObj, useUTC, parentFn) {
-      const queryObj = this.getQueryObject(queryOrObj, useUTC)
-      this.validateParameters(
+    function validateQuery (queryOrObj, useUTC, parentFn) {
+      const queryObj = getQueryObject(queryOrObj, useUTC)
+      validateParameters(
         [
-          new LexicalParam('string', queryObj.query_str, 'query string')
+          {
+            type: 'string',
+            value: queryObj.query_str,
+            name: 'query string'
+          }
         ],
         parentFn
       )
       return queryObj
     }
+
+    return {
+      StreamEvents,
+      validateParameters,
+      getChunkyArgs,
+      validateQuery
+    }
   }
 
   return {
-    NotifyFactory,
-    StreamEvents,
-    LexicalParam
+    NotifyFactory
   }
 })())
 

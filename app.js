@@ -14,12 +14,19 @@ var sql = require('mssql/msnodesqlv8');
 var loggedInUser = ''
 
 var config = {
-    user: 'admin123',
-    password: 'Admin123!',
-    server: 'localhost',
-    // server: 'WPU5CD929158PLW\\MSSQLSERVER01',
+    //Azure DB
+    user: 'cddeploy',
+    password: 'Admin123#',
+    server: 'appdb-dissertation.database.windows.net',
+    
+    //Local DB
+    //user: 'admin123',
+    //password: 'admin123',
+    //server: 'SUSHANT-DESKTOP\\SQLEXPRESS',
+    
     driver: 'msnodesqlv8',
-    database: 'Courier_Management_1'
+    //driver: '{ODBC Driver 17 for SQL Server}',
+    database: 'Courier_Management'
 };
 
 app.get('/home', function (req, res) {
@@ -527,6 +534,6 @@ function completeOrderWithPayment(cmd, details, request, res, heading, userId) {
     });
 }
 
-var server = app.listen(5000, function () {
+var server = app.listen(7000, function () {
     console.log('Server is running..');
 });

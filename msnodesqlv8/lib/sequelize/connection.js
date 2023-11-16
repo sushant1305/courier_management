@@ -8,7 +8,7 @@ const uuid = require('uuid')
 
 const Request = require('./request.js')
 
-async function detectDriver () {
+function detectDriver () {
   const drivers = [
     'SQL Server Native Client 14.0',
     'SQL Server Native Client 13.0',
@@ -19,15 +19,15 @@ async function detectDriver () {
     'SQL Server'
   ]
   let detectedDriver = null
-  return drivers.reduce(async (prev, driver) => {
-    return prev.then(async () => {
+  return drivers.reduce((prev, driver) => {
+    return prev.then(() => {
       if (detectedDriver !== null) {
         return
       }
       return new Promise((resolve) => {
         mssql.open(`Driver=${driver};`, (err, conn) => {
           if (err) {
-            if (err.message.includes('Neither DSN nor SERVER keyword supplied') && detectedDriver === null) {
+            if (err.message.indexOf('Neither DSN nor SERVER keyword supplied') !== -1 && detectedDriver === null) {
               detectedDriver = driver
             }
           } else {
@@ -70,7 +70,7 @@ class Connection extends EventEmitter {
     this.timer = null
     this.requests = []
 
-    Promise.resolve().then(async () => {
+    Promise.resolve().then(() => {
       const match = this.config.connectionString.match(/(?:^\s*Driver\s*=)|(?:;\s*Driver\s*=)/i)
       if (!match) {
         return detectDriver().then((driver) => {
@@ -128,7 +128,7 @@ class Connection extends EventEmitter {
     } else {
       this.emit('end', new Error('connection already closed'))
     }
-    this.requests.slice().forEach((request) => { this.removeRequest(request, new Error('connection closed')) })
+    this.requests.slice().forEach((request) => this.removeRequest(request, new Error('connection closed')))
     debug(`connection (${this.uuid}): closed`)
   }
 

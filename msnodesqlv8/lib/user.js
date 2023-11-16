@@ -9,11 +9,11 @@ const userModule = ((() => {
  */
 
   function SqlTypes () {
-    const SQL_UNKNOWN_TYPE = 0
-    const SQL_DECIMAL = 3
+    // var SQL_UNKNOWN_TYPE = 0;
+    // var SQL_DECIMAL = 3;
     // var SQL_INTERVAL = 10;
     // var SQL_TIMESTAMP = 11;
-    const SQL_BINARY = -2
+    // var SQL_BINARY = -2;
     // var SQL_WCHAR = -8;
     // var SQL_SS_VARIANT = -150;
     // var SQL_SS_UDT = -151;
@@ -40,224 +40,196 @@ const userModule = ((() => {
     const SQL_SS_TIME2 = -154
     const SQL_SS_TIMESTAMPOFFSET = -155
 
-    // currently mapped in the driver either through a guess by looking at type or explicitly from user
-
-    class ConcreteColumnType {
-      parseHHMMSS (s) {
-        const rehhmmss = /(\d?\d):(\d?\d):(\d?\d)$/g
-        if (typeof s === 'string') {
-          const match = rehhmmss.exec(s)
-          if (match) {
-            const [, hh, mm, ss] = match
-            this.value = new Date(Date.UTC(1900, 0, 1,
-              parseInt(hh),
-              parseInt(mm),
-              parseInt(ss)))
-            return true
-          }
-          return false
-        }
-      }
-
-      parseMMSS (s) {
-        const rehhmmss = /(\d?\d):(\d?\d)$/g
-        if (typeof s === 'string') {
-          const match = rehhmmss.exec(s)
-          if (match) {
-            const [, mm, ss] = match
-            this.value = new Date(Date.UTC(1900, 0, 1,
-              0,
-              parseInt(mm),
-              parseInt(ss)))
-            return true
-          }
-          return false
-        }
-      }
-
-      parseSS (s) {
-        const rehhmmss = /(\d?\d)$/g
-        if (typeof s === 'string') {
-          const match = rehhmmss.exec(s)
-          if (match) {
-            const [, ss] = match
-            this.value = new Date(Date.UTC(1900, 0, 1,
-              0,
-              0,
-              parseInt(ss)))
-            return true
-          }
-          return false
-        }
-      }
-
-      parse (s) {
-        if (!this.parseHHMMSS(s) && !this.parseMMSS(s) && !this.parseSS(s)) {
-          this.value = s
-        }
-      }
-
-      calcFraction (value, fraction) {
-        if (!fraction && value) {
-          fraction = 0
-          if (Array.isArray(value)) {
-            if (value.length > 0) {
-              const s = value.find(o => !!o)
-              if (s) {
-                fraction = s.getUTCMilliseconds()
-              }
-            }
-          } else {
-            fraction = value.getUTCMilliseconds()
-          }
-        }
-        return fraction
-      }
-
-      constructor (sqlType, value, precision, scale, offset, fraction) {
-        precision = precision > 0
-          ? precision
-          : 0
-        scale = scale > 0
-          ? scale
-          : 0
-
-        this.sql_type = sqlType
-        this.value = value
-        this.precision = precision
-        this.scale = scale
-        this.offset = offset
-        this.isDateTime = sqlType === SQL_TYPE_TIMESTAMP
-        if (this.isDateTime) {
-          this.fraction = this.calcFraction(value, fraction)
-        }
-        this.isTime2 = sqlType === SQL_SS_TIME2
-        if (this.isTime2) {
-          this.precision = this.precision || 16
-          this.scale = this.scale || 7
-        }
-        this.money = false
-      }
-    }
+    // currently mapped in the driver .. either through a guess by looking at type or explicitly from user
 
     function Bit (p) {
-      return new ConcreteColumnType(SQL_BIT, p)
+      return {
+        sql_type: SQL_BIT,
+        value: p
+      }
     }
 
     // sql.BigInt(value)
 
     function BigInt (p) {
-      return new ConcreteColumnType(SQL_BIGINT, p)
+      return {
+        sql_type: SQL_BIGINT,
+        value: p
+      }
     }
 
     // sql.Float(value)
 
     function Float (p) {
-      return new ConcreteColumnType(SQL_FLOAT, p)
+      return {
+        sql_type: SQL_FLOAT,
+        value: p
+      }
     }
 
     // sql.Real(value)
 
     function Real (p) {
-      return new ConcreteColumnType(SQL_REAL, p)
+      return {
+        sql_type: SQL_REAL,
+        value: p
+      }
     }
 
     // sql.Int(value)
 
     function Int (p) {
-      return new ConcreteColumnType(SQL_INTEGER, p)
+      return {
+        sql_type: SQL_INTEGER,
+        value: p
+      }
     }
 
     // sql.SmallInt(value)
 
     function SmallInt (p) {
-      return new ConcreteColumnType(SQL_SMALLINT, p)
+      return {
+        sql_type: SQL_SMALLINT,
+        value: p
+      }
     }
 
     // sql.TinyInt(value)
 
     function TinyInt (p) {
-      return new ConcreteColumnType(SQL_TINYINT, p)
+      return {
+        sql_type: SQL_TINYINT,
+        value: p
+      }
     }
 
     // sql.Numeric(value, [precision], [scale]) -- optional precision and scale definition
 
     function Numeric (p, precision, scale) {
-      return new ConcreteColumnType(SQL_NUMERIC, p, precision, scale)
-    }
-
-    function Decimal (p, precision, scale) {
-      return new ConcreteColumnType(SQL_DECIMAL, p, precision, scale)
+      return {
+        sql_type: SQL_NUMERIC,
+        value: p,
+        precision: precision > 0
+          ? precision
+          : 0,
+        scale: scale > 0
+          ? scale
+          : 0
+      }
     }
 
     // sql.Money(value) - uses underlying numeric type with driver computed precision/scale
 
     function Money (p) {
-      const c = new ConcreteColumnType(SQL_NUMERIC, p, 0, 0)
-      c.money = true
-      return c
+      return {
+        sql_type: SQL_NUMERIC,
+        value: p,
+        precision: 0,
+        scale: 0
+      }
     }
 
     // sql.SmallMoney(value)
 
-    function Binary (p) {
-      return new ConcreteColumnType(SQL_BINARY, p, 0, 0)
-    }
-
     function VarBinary (p) {
-      return new ConcreteColumnType(SQL_VARBINARY, p, 0, 0)
-    }
-
-    function Unknown (p) {
-      return new ConcreteColumnType(SQL_UNKNOWN_TYPE, p, 0, 0)
+      return {
+        sql_type: SQL_VARBINARY,
+        value: p
+      }
     }
 
     function LongVarBinary (p) {
-      return new ConcreteColumnType(SQL_LONGVARBINARY, p, 0, 0)
+      return {
+        sql_type: SQL_LONGVARBINARY,
+        value: p
+      }
     }
 
     function WVarChar (p) {
-      return new ConcreteColumnType(SQL_WVARCHAR, p, 0, 0)
+      return {
+        sql_type: SQL_WVARCHAR,
+        value: p
+      }
     }
 
     function WLongVarChar (p) {
-      return new ConcreteColumnType(SQL_WLONGVARCHAR, p, 0, 0)
+      return {
+        sql_type: SQL_WLONGVARCHAR,
+        value: p
+      }
     }
 
     // sql.DateTimeOffset(value, [scale]) -- optional scale definition
 
     function DateTimeOffset (p, scale, offset) {
-      return new ConcreteColumnType(SQL_SS_TIMESTAMPOFFSET, p, undefined, scale, offset)
+      return {
+        sql_type: SQL_SS_TIMESTAMPOFFSET,
+        value: p,
+        scale: scale > 0
+          ? scale
+          : 0,
+        offset
+      }
     }
 
     function Double (p) {
-      return new ConcreteColumnType(SQL_DOUBLE, p)
+      return {
+        sql_type: SQL_DOUBLE,
+        value: p
+      }
     }
 
     // sql.Char(value, [length]) -- optional length definition
 
     function Char (p, precision) {
-      return new ConcreteColumnType(SQL_CHAR, p, precision)
+      return {
+        sql_type: SQL_CHAR,
+        value: p,
+        precision: precision > 0
+          ? precision
+          : 0
+      }
     }
 
     // sql.VarChar(value, [length]) -- optional length definition
 
     function VarChar (p, precision) {
-      return new ConcreteColumnType(SQL_VARCHAR, p, precision)
+      return {
+        sql_type: SQL_VARCHAR,
+        value: p,
+        precision: precision > 0
+          ? precision
+          : 0
+      }
     }
 
     // sql.Time(value, [scale]) -- optional scale definition
 
     function Time2 (p, scale, offset) {
-      return new ConcreteColumnType(SQL_SS_TIME2, p, undefined, scale, offset)
+      return {
+        sql_type: SQL_SS_TIME2,
+        value: p,
+        scale: scale > 0
+          ? scale
+          : 0,
+        offset
+      }
     }
 
     function MyDate (p, offset) {
-      return new ConcreteColumnType(SQL_TYPE_DATE, p, undefined, undefined, offset)
+      return {
+        sql_type: SQL_TYPE_DATE,
+        offset,
+        value: p
+      }
     }
 
     function DateTime (p, offset) {
-      return new ConcreteColumnType(SQL_TYPE_TIMESTAMP, p, undefined, undefined, offset)
+      return {
+        sql_type: SQL_TYPE_TIMESTAMP,
+        offset,
+        value: p
+      }
     }
 
     // fraction is not yet used by driver, this is a placeholder for potential use given
@@ -267,7 +239,28 @@ const userModule = ((() => {
     // sql.DateTime2(value, [scale]) -- optional scale definition
 
     function DateTime2 (p, scale, fraction, offset) {
-      return new ConcreteColumnType(SQL_TYPE_TIMESTAMP, p, undefined, scale, offset, fraction)
+      if (!fraction && p) {
+        fraction = 0
+        if (Array.isArray(p)) {
+          if (p.length > 0) {
+            const s = p.find(o => !!o)
+            if (s) {
+              fraction = s.getUTCMilliseconds()
+            }
+          }
+        } else {
+          fraction = p.getUTCMilliseconds()
+        }
+      }
+      return {
+        sql_type: SQL_TYPE_TIMESTAMP,
+        offset,
+        value: p,
+        fraction,
+        scale: scale > 0
+          ? scale
+          : 0
+      }
     }
 
     // datetime Date round to 10 ms as fraction is not guaranteed
@@ -339,8 +332,8 @@ const userModule = ((() => {
       let unqualifiedTableName = typeName
       const schemaIndex = typeName.indexOf('.')
       if (schemaIndex > 0) {
-        schema = typeName.substring(0, schemaIndex)
-        unqualifiedTableName = typeName.substring(schemaIndex + 1)
+        schema = typeName.substr(0, schemaIndex)
+        unqualifiedTableName = typeName.substr(schemaIndex + 1)
       }
 
       if (cols && Array.isArray(cols)) {
@@ -407,7 +400,7 @@ const userModule = ((() => {
     }
 
     function getSqlTypeFromDeclaredType (dt, p) {
-      const type = dt.declaration || dt.type || dt.type_id
+      const type = dt.declaration || dt.type
       switch (type) {
         case 'char':
         case 'nchar':
@@ -445,7 +438,7 @@ const userModule = ((() => {
           return Numeric(p, dt.precision, dt.scale)
 
         case 'decimal':
-          return Decimal(p, dt.precision, dt.scale)
+          return Numeric(p, dt.precision, dt.scale)
 
         case 'real':
           return Real(p)
@@ -475,15 +468,12 @@ const userModule = ((() => {
           return Money(p)
 
         case 'binary':
-          return Binary(p)
-
         case 'varbinary':
-        case 'image':
         case 'hierarchyid':
           return VarBinary(p)
 
         default:
-          return Unknown(p)
+          return null
       }
     }
 
@@ -498,15 +488,13 @@ const userModule = ((() => {
       Numeric,
       Money,
       SmallMoney: Money,
-      Binary,
       VarBinary,
-      Unknown,
       UniqueIdentifier: WVarChar,
       LongVarBinary,
       Image: LongVarBinary,
       WVarChar,
       Double,
-      Decimal,
+      Decimal: Numeric,
       SmallInt,
       Float,
       Real,

@@ -3,69 +3,66 @@
 'use strict'
 
 const driverModule = ((() => {
+  const readerModule = require('./reader').readerModule
   const queueModule = require('./queue').queueModule
-  const { DriverRead } = require('./reader')
-  const { NativePreparedQueryHandler, NativeQueryHandler, NativeProcedureQueryHandler } = require('./query-handler')
 
-  const driverCommandEnum = {
-    CANCEL: 10,
-    COMMIT: 11,
-    ROLLBACK: 12,
-    BEGIN_TRANSACTION: 13,
-    PREPARE: 14,
-    FREE_STATEMENT: 15,
-    QUERY: 16,
-    CLOSE: 17,
-    UNBIND: 18
-  }
-
-  class DriverMgr {
-    constructor (sql) {
-      this.cppDriver = sql
-      this.workQueue = new queueModule.WorkQueue()
-      this.reader = new DriverRead(this.cppDriver, this.workQueue)
+  function DriverMgr (sql) {
+    const driverCommandEnum = {
+      CANCEL: 10,
+      COMMIT: 11,
+      ROLLBACK: 12,
+      BEGIN_TRANSACTION: 13,
+      PREPARE: 14,
+      FREE_STATEMENT: 15,
+      QUERY: 16,
+      CLOSE: 17,
+      UNBIND: 18
     }
 
-    setUseUTC (utc) {
-      this.reader.setUseUTC(utc)
+    const cppDriver = sql
+    const workQueue = new queueModule.WorkQueue()
+    const reader = new readerModule.DriverRead(cppDriver, workQueue)
+
+    function setUseUTC (utc) {
+      reader.setUseUTC(utc)
     }
 
-    emptyQueue () {
-      this.workQueue.emptyQueue()
+    function emptyQueue () {
+      workQueue.emptyQueue()
     }
 
-    close (callback) {
-      this.workQueue.enqueue(driverCommandEnum.CLOSE, () => {
-        this.cppDriver.close(() => {
+    function close (callback) {
+      workQueue.enqueue(driverCommandEnum.CLOSE, () => {
+        cppDriver.close(() => {
           callback()
         })
       }, [])
     }
 
-    forwardCancel (err, callback) {
-      setImmediate(() => {
-        if (err && err.length > 0) {
-          callback(err[0])
-        } else {
-          callback(null)
-        }
-      })
-    }
-
-    execCancel (qid, queueItem, callback) {
+    function execCancel (qid, queueItem, callback) {
       // send cancel directly to driver.
       const args = queueItem.args
       const cb = args[3]
-      const peek = this.workQueue.peek()
+      const peek = workQueue.peek()
+
+      function forwardCancel (err) {
+        setImmediate(() => {
+          if (err && err.length > 0) {
+            callback(err[0])
+          } else {
+            callback(null)
+          }
+        })
+      }
 
       if (queueItem.operationId === peek.operationId) {
-        this.cppDriver.pollingMode(qid, true, () => {
-          this.cppDriver.cancelQuery(qid, (e) => {
-            this.forwardCancel(e, callback)
+        cppDriver.pollingMode(qid, true, () => {
+          cppDriver.cancelQuery(qid, (e) => {
+            forwardCancel(e)
           })
         })
       } else {
-        this.workQueue.dropItem(queueItem)
+        workQueue.dropItem(queueItem)
         setImmediate(() => {
           // make a callback on the cancel request with no error.
           callback(null)
@@ -79,42 +76,36 @@ const driverModule = ((() => {
     // if this relates to the active query being executed then immediately send
     // the cancel, else the query can be removed from the queue and never submitted to the driver.
 
-    cancelSelector (qid, currentItem) {
-      if (currentItem.commandType !== driverCommandEnum.QUERY) {
-        return false
-      }
-      const args = currentItem.args
-      const not = args[0]
-      const currentQueryId = not.getQueryId()
-      return qid === currentQueryId
-    }
-
-    drop (qid, first, notify, callback) {
-      if (first.paused) {
-        this.execCancel(qid, first, () => {
-          this.freeStatement(notify, () => {
-            this.workQueue.dropItem(first)
-            callback(null)
-          })
-        })
-      } else {
-        this.execCancel(qid, first, callback)
-      }
-    }
-
-    cancel (notify, callback) {
+    function cancel (notify, callback) {
       const qid = notify.getQueryId()
-      if (this.workQueue.length() === 0) {
+      if (workQueue.length() === 0) {
         setImmediate(() => {
           callback(new Error(`Error: [msnodesql] cannot cancel query (empty queue) id ${qid}`))
         })
         return
       }
 
-      const first = this.workQueue.first(
-        (_idx, currentItem) => this.cancelSelector(qid, currentItem))
+      const first = workQueue.first((_idx, currentItem) => {
+        if (currentItem.commandType !== driverCommandEnum.QUERY) {
+          return false
+        }
+        const args = currentItem.args
+        const not = args[0]
+        const currentQueryId = not.getQueryId()
+        return qid === currentQueryId
+      })
+
       if (first) {
-        this.drop(qid, first, notify, callback)
+        if (first.paused) {
+          execCancel(qid, first, () => {
+            freeStatement(notify, () => {
+              workQueue.dropItem(first)
+              callback(null)
+            })
+          })
+        } else {
+          execCancel(qid, first, callback)
+        }
       } else {
         setImmediate(() => {
           callback(new Error(`Error: [msnodesql] cannot cancel query (not found) id ${qid}`))
@@ -122,11 +113,13 @@ const driverModule = ((() => {
       }
     }
 
-    getNames (results) {
-      const names = []
+    function objectify (results) {
+      const names = {}
+
       const lim = results.meta
         ? results.meta.length
         : 0
+
       for (let idx = 0; idx < lim; idx += 1) {
         const meta = results.meta[idx]
         const name = meta.name
@@ -142,51 +135,51 @@ const driverModule = ((() => {
           names[candidate] = idx
         }
       }
-      return names
-    }
 
-    rowAsObject (names, row) {
-      const value = {}
-      Object.keys(names).forEach(name => {
-        if (Object.prototype.hasOwnProperty.call(names, name)) {
-          value[name] = row[names[name]]
-        }
-      })
-      return value
-    }
-
-    objectify (results) {
-      const names = this.getNames(results)
-      return results.rows
-        ? results.rows.map(r => this.rowAsObject(names, r))
-        : []
-    }
-
-    raiseFree (queryId, notify, callback) {
-      setImmediate(() => {
-        callback(null, queryId)
-        setImmediate(() => {
-          notify.emit('free', queryId)
-          this.workQueue.nextOp()
+      const rows = []
+      if (results.rows) {
+        results.rows.forEach(row => {
+          const value = {}
+          Object.keys(names).forEach(name => {
+            if (Object.prototype.hasOwnProperty.call(names, name)) {
+              value[name] = row[names[name]]
+            }
+          })
+          rows.push(value)
         })
-      })
+      }
+
+      return rows
     }
 
-    freeStatement (notify, callback) {
+    function freeStatement (notify, callback) {
       const queryId = notify.getQueryId()
       if (queryId >= 0) {
-        this.workQueue.enqueue(driverCommandEnum.FREE_STATEMENT, () => {
-          this.cppDriver.freeStatement(queryId,
-            () => { this.raiseFree(queryId, notify, callback) })
+        workQueue.enqueue(driverCommandEnum.FREE_STATEMENT, () => {
+          cppDriver.freeStatement(queryId, () => {
+            setImmediate(() => {
+              callback(null, queryId)
+              setImmediate(() => {
+                notify.emit('free', queryId)
+                workQueue.nextOp()
+              })
+            })
+          })
         }, [])
       } else {
-        this.raiseFree(queryId, notify, callback)
+        setImmediate(() => {
+          callback(null, queryId)
+          setImmediate(() => {
+            notify.emit('free', queryId)
+            workQueue.nextOp()
+          })
+        })
       }
     }
 
-    onStatementComplete (notify, outputParams, callback, results, more) {
+    function onStatementComplete (notify, outputParams, callback, results, more) {
       if (!more) {
-        this.freeStatement(notify, () => {
+        freeStatement(notify, () => {
           if (callback) {
             callback(null, results, more, outputParams)
           }
@@ -202,86 +195,165 @@ const driverModule = ((() => {
     // only be unbound when rest of query completes. The output params
     // will now be ready to fetch out of the statement.
 
-    next (callback, err) {
-      setImmediate(() => {
-        callback(err || null, false)
-        setImmediate(() => {
-          this.workQueue.nextOp()
+    function beginTransaction (callback) {
+      workQueue.enqueue(driverCommandEnum.BEGIN_TRANSACTION, () => {
+        cppDriver.beginTransaction(err => {
+          setImmediate(() => {
+            callback(err || null, false)
+            setImmediate(() => {
+              workQueue.nextOp()
+            })
+          })
         })
-      })
-    }
-
-    beginTransaction (callback) {
-      this.workQueue.enqueue(driverCommandEnum.BEGIN_TRANSACTION, () => {
-        this.cppDriver.beginTransaction(err => { this.next(callback, err) })
       }, [])
     }
 
-    rollback (callback) {
-      this.workQueue.enqueue(driverCommandEnum.ROLLBACK, () => {
-        this.cppDriver.rollback(err => { this.next(callback, err) })
+    function rollback (callback) {
+      workQueue.enqueue(driverCommandEnum.ROLLBACK, () => {
+        cppDriver.rollback(err => {
+          callback(err || null, false)
+          setImmediate(() => {
+            workQueue.nextOp()
+          })
+        })
       }, [])
     }
 
-    commit (callback) {
-      this.workQueue.enqueue(driverCommandEnum.COMMIT, () => {
-        this.cppDriver.commit(err => { this.next(callback, err) })
+    function commit (callback) {
+      workQueue.enqueue(driverCommandEnum.COMMIT, () => {
+        cppDriver.commit(err => {
+          setImmediate(() => {
+            callback(err || null, false)
+            setImmediate(() => {
+              workQueue.nextOp()
+            })
+          })
+        })
       }, [])
     }
 
-    prepare (notify, queryOrObj, callback) {
-      this.workQueue.enqueue(driverCommandEnum.PREPARE, () => {
-        this.cppDriver.prepare(notify.getQueryId(), queryOrObj, (err, meta) => {
+    function prepare (notify, queryOrObj, callback) {
+      workQueue.enqueue(driverCommandEnum.PREPARE, () => {
+        cppDriver.prepare(notify.getQueryId(), queryOrObj, (err, meta) => {
           callback(err, meta)
-          this.workQueue.nextOp()
+          workQueue.nextOp()
         })
       }, [])
     }
 
-    readOperation (notify, queryObj, params, factory, cb) {
-      notify.setOperation(this.workQueue.enqueue(driverCommandEnum.QUERY,
+    function readAllPrepared (notify, queryObj, params, cb) {
+      notify.setOperation(workQueue.enqueue(driverCommandEnum.QUERY,
         (notify, query, params, callback) => {
           setImmediate(() => {
-            const q = this.reader.getQuery(notify, query, params, factory(), callback)
+            const q = reader.getQuery(notify, query, params, {
+              begin: (queryId, query, params, callback) => {
+                cppDriver.bindQuery(queryId, params, (err, meta) => {
+                  if (callback) {
+                    callback(err, meta)
+                  }
+                })
+              },
+              end: (queryId, outputParams, callback, results, more) => {
+                if (callback) {
+                  callback(null, results, more, outputParams)
+                }
+              }
+            }, callback)
             notify.setQueryWorker(q)
             q.begin()
           })
         }, [notify, queryObj, params, cb]))
     }
 
-    readAllPrepared (notify, queryObj, params, cb) {
-      this.readOperation(notify, queryObj, params,
-        () => new NativePreparedQueryHandler(this.cppDriver), cb)
-    }
-
-    readAllProc (notify, queryObj, params, cb) {
-      this.readOperation(notify, queryObj, params,
-        () => new NativeProcedureQueryHandler(this.cppDriver, this, this.workQueue, driverCommandEnum.UNBIND), cb)
-    }
-
-    read (notify, queryObj, params, cb) {
-      this.readOperation(notify, queryObj, params,
-        () => new NativeQueryHandler(this.cppDriver, this), cb)
-    }
-
-    headPaused (notify, queryObj, params, cb) {
-      const peek = this.workQueue.peek()
-      const paused = peek?.paused
-      if (paused) {
-        const pausedNotify = peek.args[0]
-        this.freeStatement(pausedNotify, () => {
-          this.workQueue.dropItem(peek)
-          this.read(notify, queryObj, params, cb)
+    function read (notify, queryObj, params, cb) {
+      notify.setOperation(workQueue.enqueue(driverCommandEnum.QUERY, (notify, query, params, callback) => {
+        setImmediate(() => {
+          const q = reader.getQuery(notify, query, params, {
+            begin: (queryId, query, params, callback) => cppDriver.query(queryId, query, params, (err, results, more) => {
+              if (callback) {
+                callback(err, results, more)
+              }
+            }),
+            end: (not, outputParams, callback, results, endMore) => {
+              onStatementComplete(not, outputParams, callback, results, endMore)
+            }
+          }, callback)
+          notify.setQueryWorker(q)
+          q.begin()
         })
-      }
-      return paused
+      }, [notify, queryObj, params, cb]))
     }
 
-    readAllQuery (notify, queryObj, params, cb) {
+    function readAllQuery (notify, queryObj, params, cb) {
       // if paused at head of q then kill this statement to allow driver to set up this one
-      if (!this.headPaused(notify, queryObj, params, cb)) {
-        this.read(notify, queryObj, params, cb)
+      const peek = workQueue.peek()
+      if (peek && peek.paused) {
+        const pausedNotify = peek.args[0]
+        freeStatement(pausedNotify, () => {
+          workQueue.dropItem(peek)
+          read(notify, queryObj, params, cb)
+        })
+      } else {
+        read(notify, queryObj, params, cb)
       }
+    }
+
+    function realAllProc (notify, queryObj, params, cb) {
+      notify.setOperation(workQueue.enqueue(driverCommandEnum.QUERY,
+        (notify, query, params, callback) => {
+          setImmediate(() => {
+            const q = reader.getQuery(notify, query, params, {
+              begin: (queryId, procedure, params, callback) => {
+                cppDriver.callProcedure(queryId, procedure, params, (err, results, params) => {
+                  if (callback) {
+                    callback(err, results, params)
+                  }
+                })
+              },
+              // for a stored procedure with multiple statements, only unbind after all
+              // statements are completed
+              end: (not, outputParams, callback, results, endMore) => {
+                if (!endMore) {
+                  const qid = not.getQueryId()
+                  workQueue.enqueue(driverCommandEnum.UNBIND, (a) => {
+                    setImmediate(() => {
+                      cppDriver.unbind(qid, (err, outputVector) => {
+                        if (err && callback) {
+                          callback(err, results)
+                        }
+                        not.emit('output', outputVector)
+                        onStatementComplete(not, outputVector, callback, results, a)
+                        if (!a) {
+                          workQueue.nextOp()
+                        }
+                      })
+                    }, [endMore])
+                  })
+                } else {
+                  onStatementComplete(not, null, callback, results, endMore)
+                }
+              }
+            }, callback)
+            notify.setQueryWorker(q)
+            q.begin()
+          })
+        }, [notify, queryObj, params, cb]))
+    }
+
+    return {
+      setUseUTC,
+      cancel,
+      commit,
+      rollback,
+      beginTransaction,
+      prepare,
+      objectify,
+      freeStatement,
+      readAllQuery,
+      realAllProc,
+      readAllPrepared,
+      emptyQueue,
+      close
     }
   }
 
