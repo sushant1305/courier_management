@@ -21,7 +21,6 @@
 
 #include "stdafx.h"
 #include <map>
-#include <unordered_set>
 #include <OdbcConnection.h>
 
 namespace mssql
@@ -46,10 +45,8 @@ namespace mssql
 		shared_ptr<OdbcStatement> store(shared_ptr<OdbcStatement> statement);
 
 		typedef map<long, shared_ptr<OdbcStatement>> map_statements_t;
-		typedef unordered_set<long> set_ids_t;
 
 		map_statements_t statements;
 		shared_ptr<ConnectionHandles> _connectionHandles;
-		set_ids_t _spent_statements;
 	};
 }

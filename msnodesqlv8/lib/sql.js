@@ -19,27 +19,15 @@
 // limitations under the License.
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-const cw = require('./sql-client').sqlCLientModule
+const cw = require('./connection').connectionModule
 const pm = require('./pool').poolModule
 const us = cw.userTypes
 
 exports.module = module
 
-function query (connectDetails, queryOrObj, paramsOrCallback, callback) {
-  return cw.query(connectDetails, queryOrObj, paramsOrCallback, callback)
-}
-
-function queryRaw (connectDetails, queryOrObj, paramsOrCallback, callback) {
-  return cw.queryRaw(connectDetails, queryOrObj, paramsOrCallback, callback)
-}
-
-function open (params, callback) {
-  return cw.open(params, callback)
-}
-
-exports.query = query
-exports.queryRaw = queryRaw
-exports.open = open
+exports.query = cw.query
+exports.queryRaw = cw.queryRaw
+exports.open = cw.open
 exports.promises = cw.promises
 
 exports.Bit = us.Bit

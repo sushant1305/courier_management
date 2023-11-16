@@ -1,4 +1,3 @@
-'use strict'
 class ServerDialect {
   constructor (name) {
     this.name = name
