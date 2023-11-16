@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+<style>
+        .newlabel {
+            margin-left: 80px;
+            min-width: 220px;
+            padding: 5px;
+        }
+        button {
+            position: relative;
+            left:180px; 
+            top:50px;
+            }
+        .form-control {
+            width: 10%;
+            display: inline-block;
+        }
+
+</style>
+</head>
+<body>
+<img src="/images/header.png" width="100%" style="margin-bottom:2%;max-height:15vh"/>
+<form method="POST" action="/createUser">
+    <center><h2>Registration</h2></center>
+    <div class="container">
+    <div class="form-group">
+        <label class="newlabel">First Name : </label>
+        <input type="text" class="form-control" placeholder="Enter First Name" name="firstName" required><br>
+    </div>
+        <div class="form-group">
+        <label class="newlabel">Last Name : </label>
+        <input type="text" class="form-control" placeholder="Enter Last Name" name="lastName" required><br>
+        </div>
+        <div class="form-group">
+        <label class="newlabel">Contact Number : </label>
+        <input type="text" class="form-control" placeholder="Enter Contact Number" name="contactNumber" required><br>
+        </div>
+        <div class="form-group">
+        <label class="newlabel">Alternate Contact Number : </label>
+        <input type="text" class="form-control" placeholder="Enter Alternate Contact Number" name="aContactNumber"><br>
+        </div>
+        <div class="form-group">
+        <label class="newlabel">Address line 1 : </label>
+        <input type="text" class="form-control" placeholder="Enter Address" name="address1" required><br>
+        </div>
+        <div class="form-group">
+        <label class="newlabel">Address line 2 : </label>
+        <input type="text" class="form-control" placeholder="Enter Address" name="address2" required><br>
+        </div>
+        <div class="form-group">
+        <label class="newlabel">Address line 3 : </label>
+        <input type="text" class="form-control" placeholder="Enter Address" name="address3" required><br>
+        </div>
+        <div class="form-group">
+        <label class="newlabel">LandMark : </label>
+        <input type="text" class="form-control" placeholder="Enter Landmark" name="landmark" ><br>
+        </div>
+        <div class="form-group">
+        <label class="newlabel">City : </label>
+        <input type="text" class="form-control" placeholder="Enter City" name="cityName" ><br>
+        </div>
+        <div class="form-group">
+        <label class="newlabel">District : </label>
+        <input type="text" class="form-control" placeholder="Enter District" name="district" ><br>
+        </div>
+        <div class="form-group">
+        <label class="newlabel">State : </label>
+        <input type="text" class="form-control" placeholder="Enter State" name="stateName" ><br>
+        </div>
+        <div class="form-group">
+        <label class="newlabel">ZipCode : </label>
+        <input type="number" class="form-control" placeholder="Enter Zip Code" name="zipcode" ><br>
+        </div>
+        <div class="form-group">
+        <label class="newlabel">Role : </label>
+        <input id="user-role" class="form-control" list="roles" placeholder="Select Role" name="role" ><br>
+        <datalist id="roles">
+            <option value="Customer">
+            <option value="Executive">
+            <option value="Admin">
+        </datalist>
+        </div>
+        <div class="form-group">
+        <label class="newlabel">Password : </label>
+        <input type="password" class="form-control" placeholder="Enter Password" name="password"><br>
+        </div>
+        <div class="form-group">
+        <label class="newlabel">Email : </label>
+        <input type="email" class="form-control" placeholder="Enter Email" name="email"><br>
+
+        <button type="submit" class="btn btn-primary">Register</button>
+    </div>
+</form>
+</body>
+</html>
