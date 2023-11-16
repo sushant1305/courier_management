@@ -14,6 +14,7 @@ var sql = require('mssql/msnodesqlv8');
 var loggedInUser = ''
 
 var config = {
+
     //Azure DB
     user: 'cddeploy',
     password: 'Admin123#',
@@ -23,7 +24,6 @@ var config = {
     //user: 'admin123',
     //password: 'admin123',
     //server: 'SUSHANT-DESKTOP\\SQLEXPRESS',
-    
     //driver: 'msnodesqlv8',
     driver: '{ODBC Driver 17 for SQL Server}',
     database: 'Courier_Management'
