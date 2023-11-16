@@ -47,16 +47,11 @@
           src: /home/cddeploy/docker/courier_mgmt.tar
           dest: /home/cddeploy/docker/courier_mgmt.tar
     
-    - name: Stop a container
-      docker_container:
-        name: courier
-        state: stopped
-      become: true
-      vars:
-        ansible_python_interpreter: /usr/bin/python3
-    
-    - name: Load image from archive and push to a private registry
-      docker_image:
-        name: courier_mgmt
-        load_path: /home/cddeploy/docker/courier_mgmt.tar
-        source: load
+    - name: Load courier_management image
+      docker_image_load:
+        path: /home/cddeploy/docker/courier_mgmt.tar
+      register: result
+
+    - name: Print the loaded image names
+      debug:
+        msg: "Loaded the following images: {{ result.image_names | join(', ') }}"
