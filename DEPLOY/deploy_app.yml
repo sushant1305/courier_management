@@ -10,6 +10,7 @@
     ansible_become_pass: "{{ sudo_pass }}"
     docker_installation: "/home/cddeploy/docker"
     package: "docker"
+    app_name: "container_management"
 
   tasks:
     - name: Create docker directory
@@ -36,7 +37,21 @@
         state: started
         enabled: yes
 
-    - name: Pull the courier_management image
+    - name: Stop a container
+      docker_container:
+        name: courier
+        state: stopped
+      become: true
+
+    - name: Remove the {{ app_name }} image
+      community.docker.docker_image:
+        state: absent
+        name: 192.168.0.130:5000/courier_mgmt
+        tag: latest
+        force_absent: true
+      become: true
+
+    - name: Pull the {{ app_name }} image
       shell:
         cmd: docker save -o /home/cddeploy/docker/courier_mgmt.tar 192.168.0.130:5000/courier_mgmt:latest
       delegate_to: 127.0.0.1
@@ -47,7 +62,7 @@
           src: /home/cddeploy/docker/courier_mgmt.tar
           dest: /home/cddeploy/docker/courier_mgmt.tar
   
-    - name: Load courier_management image
+    - name: Load {{ app_name }} image
       community.docker.docker_image_load:
         path: /home/cddeploy/docker/courier_mgmt.tar
       register: result
