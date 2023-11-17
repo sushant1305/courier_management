@@ -15,7 +15,6 @@ pipeline {
         }
         
         stage('sonar-scanner') {
-            agent { label 'Built-In Node' }
             steps {
                 withSonarQubeEnv('Sonarqube') {
                     sh "${tool('sonar-scanner')}/bin/sonar-scanner -Dsonar.token=sqa_75a473269119e26cd79c57c9feda56893613c7a9 -Dsonar.projectKey=dissertation -Dsonar.projectName=courier_mgmt -Dsonar.sources=. -Dsonar.projectVersion=${BUILD_NUMBER}"
