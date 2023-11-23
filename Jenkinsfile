@@ -15,6 +15,7 @@ pipeline {
         }
         
         stage('sonar-scanner') {
+            agent { label 'controller_node' }
             steps {
                 withSonarQubeEnv('Sonarqube') {
                     sh "${tool('sonar-scanner')}/bin/sonar-scanner -Dsonar.token=sqa_75a473269119e26cd79c57c9feda56893613c7a9 -Dsonar.projectKey=dissertation -Dsonar.projectName=courier_mgmt -Dsonar.sources=. -Dsonar.projectVersion=${BUILD_NUMBER}"
@@ -49,7 +50,7 @@ pipeline {
         }
 
         stage('Deploy'){
-            agent { label 'controlleragent' }
+            agent { label 'controller_node' }
             steps{
                 echo 'Proceeding with deployment'
                 script{
