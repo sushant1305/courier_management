@@ -3,7 +3,7 @@ pipeline {
     buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '10'))
 	}
     /* agent { docker { image 'node:20.9.0-alpine3.18' } } */
-    agent any
+    agent { label 'controller_node' }
     stages {
         stage('Build Image') {
             steps {
@@ -15,7 +15,6 @@ pipeline {
         }
         
         stage('sonar-scanner') {
-            agent { label 'controller_node' }
             steps {
                 withSonarQubeEnv('Sonarqube') {
                     sh "${tool('sonar-scanner')}/bin/sonar-scanner -Dsonar.token=sqa_75a473269119e26cd79c57c9feda56893613c7a9 -Dsonar.projectKey=dissertation -Dsonar.projectName=courier_mgmt -Dsonar.sources=. -Dsonar.projectVersion=${BUILD_NUMBER}"
@@ -50,7 +49,6 @@ pipeline {
         }
 
         stage('Deploy'){
-            agent { label 'controller_node' }
             steps{
                 echo 'Proceeding with deployment'
                 script{
