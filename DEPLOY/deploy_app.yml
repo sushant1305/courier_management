@@ -75,7 +75,7 @@
 
     - name: Run the {{ app_name }} image
       community.docker.docker_container:
-        name: {{ container_name }}
+        name: "{{ container_name }}"
         image: 192.168.0.130:5000/{{ app_name }}:latest
         state: started
         restart: true
