@@ -483,9 +483,9 @@ function completeOrderWithPayment(cmd, details, request, res, heading, userId) {
         var sourceDate = dateObj.toISOString().slice(0, 19).replace('T', ' ');
         var pad = function(num) { return ('00'+num).slice(-2) };
         var destinationDate = dateObj.getUTCFullYear() + '-' +
-            pad(dateObj.getUTCMonth())  + '-' +
-            pad(dateObj.getUTCDate())       + ' ' +
-            pad(dateObj.getUTCHours())      + ':' +
+            pad(dateObj.getUTCMonth() + 1)  + '-' +
+            pad(dateObj.getUTCDate() + 2)       + ' ' +
+            pad(dateObj.getUTCHours() + 3)      + ':' +
             pad(dateObj.getUTCMinutes())    + ':' +
             pad(dateObj.getUTCSeconds());
         var currentDate = dateObj.getUTCFullYear() + '-' +
