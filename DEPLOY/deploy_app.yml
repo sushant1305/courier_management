@@ -1,5 +1,5 @@
 ---
-- name: Docker Installation
+- name: Playbook to deploy Courier Management application
   hosts: app_prod
   remote_user: cddeploy
   become_method: sudo
@@ -10,8 +10,8 @@
     ansible_become_pass: "{{ sudo_pass }}"
     docker_installation: "/home/cddeploy/docker"
     package: "docker"
-    app_name: "container_management"
-
+    app_name: "courier_mgmt"
+    container_name: "courier"
   tasks:
     - name: Create docker directory
       tags: deploy
@@ -39,32 +39,32 @@
 
     - name: Stop a container
       shell:
-        cmd: docker stop courier
+        cmd: docker stop {{ container_name }}
       become: true
       ignore_errors: true
 
     - name: Remove the {{ app_name }} image
       community.docker.docker_image:
         state: absent
-        name: 192.168.0.130:5000/courier_mgmt
+        name: 192.168.0.130:5000/{{ app_name }}
         tag: latest
         force_absent: true
       become: true
 
     - name: Pull the {{ app_name }} image
       shell:
-        cmd: docker save -o /home/cddeploy/docker/courier_mgmt.tar 192.168.0.130:5000/courier_mgmt:latest
+        cmd: docker save -o /home/cddeploy/docker/{{ app_name }}.tar 192.168.0.130:5000/{{ app_name }}:latest
       delegate_to: 127.0.0.1
 
     - name: Copy from controller to prod server
       tags: deploy
       copy:
-          src: /home/cddeploy/docker/courier_mgmt.tar
-          dest: /home/cddeploy/docker/courier_mgmt.tar
+          src: /home/cddeploy/docker/{{ app_name }}.tar
+          dest: /home/cddeploy/docker/{{ app_name }}.tar
   
     - name: Load {{ app_name }} image
       community.docker.docker_image_load:
-        path: /home/cddeploy/docker/courier_mgmt.tar
+        path: /home/cddeploy/docker/{{ app_name }}.tar
       register: result
       become: true
 
@@ -75,8 +75,8 @@
 
     - name: Run the {{ app_name }} image
       community.docker.docker_container:
-        name: courier
-        image: 192.168.0.130:5000/courier_mgmt:latest
+        name: {{ container_name }}
+        image: 192.168.0.130:5000/{{ app_name }}:latest
         state: started
         restart: true
         ports:
